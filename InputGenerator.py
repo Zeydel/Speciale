@@ -49,4 +49,4 @@ def generateInput(num_nodes, size, seed=42, connectivity=0.5):
         
     return nodes
 
-generateInput(1000, 1000)
+generateInput(100, 1000, connectivity=0.5)

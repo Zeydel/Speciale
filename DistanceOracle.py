@@ -1,4 +1,8 @@
+import numpy as np
 from queue import PriorityQueue
+from random import sample
+from collections import defaultdict
+from itertools import combinations
 
 class Node:
     
@@ -47,6 +51,7 @@ class Graph:
         
     def get_nodes(self):
         return [k for k in self.nodes]
+    
     
 def parse(filename='input.txt'):
     f = open(filename, 'r')
@@ -101,9 +106,131 @@ def get_min_dist(graph, node):
         
     return dists
     
+def preprocess(G, k = 2):
+    
+    nodes = G.get_nodes()
+    n = len(nodes)
+    
+    A = list()
+    A.append(set(nodes))
+    
+    for i in range(1, k):
+        sample_size = np.random.binomial(n, n**(-1/(k)))
+        A.append(set(sample(A[i-1], sample_size)))
+    
+    if len(A[k-1]) == 0:
+        raise Exception('The k\'th set was empty. How unfortunate')
+    
+    p_dists = [dict() for i in range(k+1)]
+    p = [dict() for i in range(k+1)]
+    B = {v: set() for v in G.get_nodes()}
+    delta = defaultdict(lambda: float('inf'))
+    
+    for v in G.get_nodes():
+        delta[(v,v)] = 0
+        p_dists[k][v] = float('inf')
+    
+    for i in range(k-1, -1, -1):
+        p_dists_i, p_i = get_p(G, A[i])
+        
+        p_dists[i] = p_dists_i
+        p[i] = p_i
+        
+        delta_i, B_i = get_bunches(G, p_dists, p[i], A[i], delta, B, i)
+        
+        delta |= delta_i
+        B |= B_i
+        
+    return (delta, B, p)
+        
+            
+            
+def get_p(G, A_i):
+        
+    queue = PriorityQueue()
+    seen = set()
+    
+    p_dists_i = dict()
+    p_i = dict()
+    
+    for n in A_i:
+        queue.put((0, n))
+        p_dists_i[n] = 0
+        p_i[n] = n
+        
+    while not queue.empty():
+                
+        cur_dist, cur_node = queue.get()
+        
+        for n in G.get_node(cur_node).edges:
+            cost = G.get_node(cur_node).edges[n]
+            
+            if n.get_id() not in p_dists_i:
+                p_dists_i[n.get_id()] = float('inf')
+                    
+            if cur_dist + cost < p_dists_i[n.get_id()]:
+                p_dists_i[n.get_id()] = cur_dist + cost
+                p_i[n.get_id()] = p_i[cur_node]
+                
+                if n.get_id() not in seen:
+                    queue.put((p_dists_i[n.get_id()], n.get_id()))
+                    seen.add(n.get_id())
+                
+    return (p_dists_i, p_i)
+            
+def get_bunches(G, p_dists, p_i, A_i, delta, B, i):
+    
+    queue = PriorityQueue()
+    
+    for n in A_i:
+        queue.put((0, n))
+        seen = set()
+        
+        while not queue.empty():
+            cur_dist, cur_node = queue.get()
+            
+            for v in G.get_node(cur_node).get_neighbors():
+                new_dist = delta[(n, cur_node)] + G.get_node(cur_node).edges[v]
+                
+                if new_dist < p_dists[i+1][v.get_id()]:
+                    best = delta[(n, v.get_id())]
+                    
+                    if new_dist < best:
+                        delta[(n, v.get_id())] = new_dist
+                        B[v.get_id()].add(n)
+                        
+                        if v.get_id() not in seen:
+                            queue.put((new_dist, v.get_id()))
+                            seen.add(v.get_id())
+    return (delta, B)
+
+
+def query(B, delta, p, u, v):
+    w = u
+    i = 0
+    
+    while w not in B[v]:
+        i += 1
+        u, v = v, u
+        w = p[i][u]
+        
+    return delta[(w,u)] + delta[(w, v)]
     
 
 
 G = parse()
 dists = get_min_dist(G, 'A')
+delta, B, p = preprocess(G)
 
+stretchSum = 0.0
+for u, v in combinations(G.get_nodes(), 2):
+    u_dists = get_min_dist(G, u)
+    approx = query(B, delta, p, u, v)
+    stretchSum += approx/u_dists[v]
+    
+    if approx/u_dists[v] > 3.0:
+        print("oh no")
+    
+print(stretchSum / len(list(combinations(G.get_nodes(), 2))))
+    
+        
