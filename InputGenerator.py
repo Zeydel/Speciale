@@ -1,5 +1,8 @@
 import random
 import math
+import os
+from tqdm import tqdm
+
 
 def generateId(last=''):
     
@@ -25,7 +28,7 @@ def generateInput(num_nodes, size, seed=42, connectivity=0.5):
     
     last = ''
     
-    for n in range(num_nodes):
+    for n in tqdm(range(num_nodes)):
         
         x = random.randint(0, size)
         y = random.randint(0, size)
@@ -49,4 +52,25 @@ def generateInput(num_nodes, size, seed=42, connectivity=0.5):
         
     return nodes
 
-generateInput(100, 1000, connectivity=0.5)
+def generateLineGraph(num_nodes):
+    
+    f = open("input.txt", "a")
+    
+    last = ''
+    
+    node_id = generateId()
+    
+    f.write(node_id + '\n')
+    
+    for n in range(1, num_nodes):
+        
+        last = node_id
+        
+        node_id = generateId(node_id)
+        f.write(node_id + ' '  + last + ":1\n")
+        
+        
+        
+if os.path.exists("input.txt"):
+    os.remove("input.txt")
+generateLineGraph(1000000)
