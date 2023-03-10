@@ -130,8 +130,8 @@ def get_most_central_nodes(graph, Ai, num_nodes, avg_dists = None):
     return (set(sorted(Ai, key = lambda n: avg_dists[n])[:num_nodes]), avg_dists)
         
 def get_or_create_avg_dists(graph):
-    if os.path.isfile('avg_dists_road.pickle'):
-        return pickle.load(open('avg_dists_road.pickle', 'rb'))
+    if os.path.isfile('avg_dists_erdos.pickle'):
+        return pickle.load(open('avg_dists_erdos.pickle', 'rb'))
     else:
         avg_dists = dict()
         for n in tqdm(graph.get_nodes()):
@@ -140,7 +140,7 @@ def get_or_create_avg_dists(graph):
             
             avg_dists[n] = sum([node_dists[v] for v in node_dists])/len(graph.get_nodes())
         
-        pickle.dump(avg_dists, open('avg_dists_road.pickle', 'wb'))
+        pickle.dump(avg_dists, open('avg_dists_erdos.pickle', 'wb'))
         return avg_dists
 
 # Preprocess a graph into a Distance Oracle according to the algorithm
@@ -157,7 +157,7 @@ def preprocess(G, k = 3):
     # A[0] contains every vertex in the graph
     A.append(set(nodes))
     
-    avg_dists = get_or_create_avg_dists(G)
+    #avg_dists = get_or_create_avg_dists(G)
     # A[1] to A[k-1] contains every element of the previous set with
     # probability n^(-1/k)
     for i in range(1, k):
@@ -172,33 +172,31 @@ def preprocess(G, k = 3):
         #A.append(set(prev[-sample_size:]))
         
         # Get the most central vertices
-        A.append(set(sorted(A[i-1], key = lambda n: avg_dists[n])[:sample_size]))
+       # A.append(set(sorted(A[i-1], key = lambda n: avg_dists[n])[:sample_size]))
         
         # Find j centers
-# =============================================================================
-#         Ai = set()
-#         cur = sample(A[i-1], 1)[0]
-#         Ai.add(cur)
-#         dists = {key: float('inf') for key in A[i-1]}
-#         while len(Ai) < sample_size:
-#             
-#             for key, v in get_min_dist(G, cur).items():
-#                 
-#                 if key in dists: 
-#                     dists[key] = min(dists[key], v)
-#             
-#             
-#             max_dist = float('-inf')
-#             cur = None
-#             for key, v in dists.items():
-#                 if v > max_dist:
-#                     max_dist = v
-#                     cur = key
-#             
-#             Ai.add(cur)
-#             
-#         A.append(Ai)
-# =============================================================================
+        Ai = set()
+        cur = sample(A[i-1], 1)[0]
+        Ai.add(cur)
+        dists = {key: float('inf') for key in A[i-1]}
+        while len(Ai) < sample_size:
+            
+            for key, v in get_min_dist(G, cur).items():
+                
+                if key in dists: 
+                    dists[key] = min(dists[key], v)
+            
+            
+            max_dist = float('-inf')
+            cur = None
+            for key, v in dists.items():
+                if v > max_dist:
+                    max_dist = v
+                    cur = key
+            
+            Ai.add(cur)
+            
+        A.append(Ai)
             
         
     
@@ -416,7 +414,7 @@ def test_something_2(test_input, k):
 
 mem_use = []
 time_use = []
-G = parse("input.txt")
+G = parse("input_roads.txt")
 for k in range(2, 6):
     #time_start = time.time()
     delta, B, p = preprocess(G, k)
@@ -454,15 +452,15 @@ for k in range(2, 6):
     meanlineprops = dict(linestyle='-', color=(0.12, 0.24, 1))
     
     plt.boxplot(appx_factors, flierprops=flierprops, medianprops=medianprops, meanprops=meanlineprops, showmeans=True, meanline=True)
-    plt.title(f'Californian Roads, Sample by Degree, k={k}')
-    plt.savefig(f'Box, Californian Roads, Sample by Degree, k={k}.png', bbox_inches='tight')
+    plt.title(f'Californian Roads, Sample Centers, k={k}')
+    plt.savefig(f'Box, Californian Roads, Sample Centers, k={k}.png', bbox_inches='tight')
     plt.show()
     plt.hist(appx_factors, bins=get_number_of_bins(appx_factors), label = 'Approximation Factors', color=(0.77, 0, 0.05))
     mn, mx = plt.xlim()
     plt.xlim(mn, mx)
     plt.legend(loc = 'upper right')
     plt.xlabel('Approximation Factors')
-    plt.title(f'Californian Roads, Sample by Degree, k={k}')
-    plt.savefig(f'Hist, Californian Roads, Sample by Degree, k={k}.png', bbox_inches='tight')
+    plt.title(f'Californian Roads, Sample Centers, k={k}')
+    plt.savefig(f'Hist, Californian Roads, Sample Centers, k={k}.png', bbox_inches='tight')
     plt.show()
 
