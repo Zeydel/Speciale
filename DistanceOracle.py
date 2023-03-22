@@ -209,7 +209,7 @@ def preprocess(G, k = 3):
     
     # If we have zero nodes in the k-1'th set, abort
     if len(A[k-1]) == 0:
-        raise Exception('The k\'th set was empty. How unfortunate')
+        return (None, None, None)
     
     # Init vars for the oracle
     delta = defaultdict(lambda: float('inf'))
@@ -415,15 +415,38 @@ def test_something_2(test_input, k):
         # Use builtin method to pick random vertices from previous sets
         A.append(set(sample(A[i-1], sample_size)))
     return A
-          
+      
+def plot_mem_time_use(mem_use, time_use):
 
+    
+    plt.plot(range(2,500), mem_use, c=(0.77, 0, 0.05))    
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of the oracle")
+    plt.show()
+    
+    plt.plot(range(2,500), time_use, color=(0.77, 0, 0.05))    
+    plt.xlabel("k")
+    plt.ylabel("seconds")
+    plt.title("Time usage of the preprocessing algorithm")
+    plt.show()
+    
+    plt.plot(range(22,500), mem_use[20:], c=(0.77, 0, 0.05))    
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of the oracle (k>20)")
+    plt.show()
 
 mem_use = []
 time_use = []
 G = parse("input_roads.txt")
-for k in range(2, 500):
+k = 2
+while k < 500:
     time_start = time.time()
     delta, B, p = preprocess(G, k)
+    if delta == None:
+        continue
+    
     time_end = time.time()
     delta = dict(delta)
     #delta, B, p = load_data()
@@ -472,3 +495,4 @@ for k in range(2, 500):
 #     plt.show()
 # 
 # =============================================================================
+    k += 1
