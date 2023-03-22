@@ -130,8 +130,8 @@ def get_most_central_nodes(graph, Ai, num_nodes, avg_dists = None):
     return (set(sorted(Ai, key = lambda n: avg_dists[n])[:num_nodes]), avg_dists)
         
 def get_or_create_avg_dists(graph):
-    if os.path.isfile('avg_dists_line.pickle'):
-        return pickle.load(open('avg_dists_line.pickle', 'rb'))
+    if os.path.isfile('avg_dists_road.pickle'):
+        return pickle.load(open('avg_dists_road.pickle', 'rb'))
     else:
         avg_dists = dict()
         for n in tqdm(graph.get_nodes()):
@@ -140,7 +140,7 @@ def get_or_create_avg_dists(graph):
             
             avg_dists[n] = sum([node_dists[v] for v in node_dists])/len(graph.get_nodes())
         
-        pickle.dump(avg_dists, open('avg_dists_line.pickle', 'wb'))
+        pickle.dump(avg_dists, open('avg_dists_road.pickle', 'wb'))
         return avg_dists
 
 # Preprocess a graph into a Distance Oracle according to the algorithm
@@ -165,44 +165,41 @@ def preprocess(G, k = 3):
         sample_size = np.random.binomial(len(A[i-1]), len(A[0])**(-1/(k)))
         
         # Use builtin method to pick random vertices from previous sets
-        A.append(set(sample(A[i-1], sample_size)))
+        #A.append(set(sample(A[i-1], sample_size)))
         
         # Get the most connected vertices
         #prev = sorted(A[i-1], key=lambda x: len(G.get_node(x).get_neighbors()))
         #A.append(set(prev[-sample_size:]))
         
         # Get the most central vertices
-        #A.append(set(sorted(A[i-1], key = lambda n: avg_dists[n])[:sample_size]))
+        #prev = sorted(A[i-1], key=lambda x: avg_dists[x])
+        #A.append(set(prev[:sample_size]))
         
         # Find j centers
-# =============================================================================
-#         Ai = set()
-#         cur = sample(A[i-1], 1)[0]
-#         Ai.add(cur)
-#         dists = {key: float('inf') for key in A[i-1]}
-#         while len(Ai) < sample_size:
-#             
-#             for key, v in get_min_dist(G, cur).items():
-#                 
-#                 if key in dists: 
-#                     dists[key] = min(dists[key], v)
-#             
-#             
-#             max_dist = float('-inf')
-#             cur = None
-#             for key, v in dists.items():
-#                 if v > max_dist:
-#                     max_dist = v
-#                     cur = key
-#             
-#             Ai.add(cur)
-#             
-#         A.append(Ai)
-#             
-# =============================================================================
+        Ai = set()
+        cur = sample(A[i-1], 1)[0]
+        Ai.add(cur)
+        dists = {key: float('inf') for key in A[i-1]}
+        while len(Ai) < sample_size:
+            
+            for key, v in get_min_dist(G, cur).items():
+                
+                if key in dists: 
+                    dists[key] = min(dists[key], v)
+            
+            
+            max_dist = float('-inf')
+            cur = None
+            for key, v in dists.items():
+                if v > max_dist:
+                    max_dist = v
+                    cur = key
+            
+            Ai.add(cur)
+            
+        A.append(Ai)
+            
         
-    
-
     # A[k] is the empty set
     A.append(set())
     #del avg_dists
@@ -231,13 +228,11 @@ def preprocess(G, k = 3):
         
         # Calculate delta(Ai, v) and P(v) for every v
         delta_Ai_i, p_i = get_p(G, A[i])
-        
         delta_Ai[i] = delta_Ai_i
         p[i] = p_i
         
         # Get the cluster for every node and calculate distances
         delta_i, C_i = get_clusters(G, A, C, delta, delta_Ai, i)
-        
         delta |= delta_i
         C |= C_i
         
@@ -297,7 +292,7 @@ def get_bunches(G, delta_Ai, A, delta, B, i):
     
     queue = []
     
-    for n in tqdm(A[i] - A[i+1]):
+    for n in A[i] - A[i+1]:
         queue.put((0, n))
         seen = set()
         
@@ -325,7 +320,7 @@ def get_clusters(G, A, C, delta, delta_Ai, i):
     queue = []
     
     # For every sampled node, not in the next layer
-    for w in tqdm(A[i] - A[i+1]):
+    for w in A[i] - A[i+1]:
         
         
         heap.heappush(queue, (0, w))
@@ -442,6 +437,7 @@ time_use = []
 G = parse("input_roads.txt")
 k = 2
 while k < 500:
+    print(k)
     time_start = time.time()
     delta, B, p = preprocess(G, k)
     if delta == None:
@@ -455,6 +451,7 @@ while k < 500:
         
     mem_use.append(sys.getsizeof(delta) + sys.getsizeof(B) + sys.getsizeof(p))
     time_use.append(time_end - time_start)
+    print(time_end - time_start)
     
     
 # =============================================================================
