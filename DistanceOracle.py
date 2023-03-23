@@ -165,7 +165,7 @@ def preprocess(G, k = 3):
         sample_size = np.random.binomial(len(A[i-1]), len(A[0])**(-1/(k)))
         
         # Use builtin method to pick random vertices from previous sets
-        #A.append(set(sample(A[i-1], sample_size)))
+        A.append(set(sample(A[i-1], sample_size)))
         
         # Get the most connected vertices
         #prev = sorted(A[i-1], key=lambda x: len(G.get_node(x).get_neighbors()))
@@ -176,28 +176,30 @@ def preprocess(G, k = 3):
         #A.append(set(prev[:sample_size]))
         
         # Find j centers
-        Ai = set()
-        cur = sample(A[i-1], 1)[0]
-        Ai.add(cur)
-        dists = {key: float('inf') for key in A[i-1]}
-        while len(Ai) < sample_size:
+# =============================================================================
+#         Ai = set()
+#         cur = sample(A[i-1], 1)[0]
+#         Ai.add(cur)
+#         dists = {key: float('inf') for key in A[i-1]}
+#         while len(Ai) < sample_size:
+#             
+#             for key, v in get_min_dist(G, cur).items():
+#                 
+#                 if key in dists: 
+#                     dists[key] = min(dists[key], v)
+#             
+#             
+#             max_dist = float('-inf')
+#             cur = None
+#             for key, v in dists.items():
+#                 if v > max_dist:
+#                     max_dist = v
+#                     cur = key
+#             
+#             Ai.add(cur)
+# =============================================================================
             
-            for key, v in get_min_dist(G, cur).items():
-                
-                if key in dists: 
-                    dists[key] = min(dists[key], v)
-            
-            
-            max_dist = float('-inf')
-            cur = None
-            for key, v in dists.items():
-                if v > max_dist:
-                    max_dist = v
-                    cur = key
-            
-            Ai.add(cur)
-            
-        A.append(Ai)
+        #A.append(Ai)
             
         
     # A[k] is the empty set
@@ -287,32 +289,6 @@ def get_p(G, A_i):
     return (delta_Ai_i, p_i)
 
 
-# Feeling cute, might delete later
-def get_bunches(G, delta_Ai, A, delta, B, i):
-    
-    queue = []
-    
-    for n in A[i] - A[i+1]:
-        queue.put((0, n))
-        seen = set()
-        
-        while not queue.empty():
-            cur_dist, cur_node = queue.get()
-            
-            for v in G.get_node(cur_node).get_neighbors():
-                new_dist = delta[(n, cur_node)] + G.get_node(cur_node).edges[v]
-                
-                if new_dist < delta_Ai[i+1][v.get_id()]:
-                    best = delta[(n, v.get_id())]
-                    
-                    if new_dist < best:
-                        delta[(n, v.get_id())] = new_dist
-                        B[v.get_id()].add(n)
-                        
-                        if v.get_id() not in seen:
-                            queue.put((new_dist, v.get_id()))
-    return (delta, B)
-
 # Function to get clusters for every node in a layer
 def get_clusters(G, A, C, delta, delta_Ai, i):
     
@@ -320,8 +296,7 @@ def get_clusters(G, A, C, delta, delta_Ai, i):
     queue = []
     
     # For every sampled node, not in the next layer
-    for w in A[i] - A[i+1]:
-        
+    for w in tqdm(A[i] - A[i+1]):
         
         heap.heappush(queue, (0, w))
         seen = set()
@@ -346,6 +321,8 @@ def get_clusters(G, A, C, delta, delta_Ai, i):
                 C[w].add(v.get_id())
                 
                 heap.heappush(queue, (new_dist, v.get_id()))
+                
+        
     
     return (delta, C)
  
@@ -386,51 +363,56 @@ def get_number_of_bins(factors):
     
     return round((max(factors) - min(factors)) / bin_width)
     
-def test_something(test_input, k):
-    
-    A = list()
-    A.append(set(test_input))
-    
-    for i in range(1, k):
-        Ai = set()
-        for a in A[i-1]:
-            if random() < len(test_input)**((-1)/k):
-                Ai.add(a)
-        A.append(Ai)
-    return A
-
-def test_something_2(test_input, k):
-
-    A = list()
-    A.append(set(test_input))
-    
-    for i in range(1, k):
-        sample_size = np.random.binomial(len(A[i-1]), len(test_input)**(-1/(k)))
-            
-        # Use builtin method to pick random vertices from previous sets
-        A.append(set(sample(A[i-1], sample_size)))
-    return A
-      
-def plot_mem_time_use(mem_use, time_use):
+def plot_mem_time_use(mem_use_1, mem_use_2, time_use_1, time_use_2):
 
     
-    plt.plot(range(2,500), mem_use, c=(0.77, 0, 0.05))    
+    plt.plot(range(2,500), mem_use_1, c=(0.77, 0, 0.05))
+    plt.plot(range(2,500), mem_use_2, c=(0.12, 0.24, 1))
     plt.xlabel("k")
     plt.ylabel("bytes")
     plt.title("Memory usage of the oracle")
     plt.show()
     
-    plt.plot(range(2,500), time_use, color=(0.77, 0, 0.05))    
+    plt.plot(range(2,500), time_use_1, color=(0.77, 0, 0.05))    
+    plt.plot(range(2,500), time_use_2, c=(0.12, 0.24, 1))
     plt.xlabel("k")
     plt.ylabel("seconds")
     plt.title("Time usage of the preprocessing algorithm")
     plt.show()
     
-    plt.plot(range(22,500), mem_use[20:], c=(0.77, 0, 0.05))    
+    plt.plot(range(15,500), mem_use_1[13:], c=(0.77, 0, 0.05))
+    plt.plot(range(15,500), mem_use_2[13:], c=(0.12, 0.24, 1))
     plt.xlabel("k")
     plt.ylabel("bytes")
     plt.title("Memory usage of the oracle (k>20)")
     plt.show()
+
+def get_mem_usage(delta, B, p):
+    total_mem = 0
+    
+    total_mem += sys.getsizeof(delta)
+    
+    for k in delta:
+        total_mem += sys.getsizeof(k[0])
+        total_mem += sys.getsizeof(k[1])
+        total_mem += sys.getsizeof(delta[k])
+        
+    total_mem += sys.getsizeof(B)
+    
+    for k in B:
+        total_mem += sys.getsizeof(k)
+        total_mem += sys.getsizeof(B[k])
+        
+    total_mem += sys.getsizeof(p)
+    
+    for l in p:
+        total_mem += sys.getsizeof(l)
+        
+        for k in l:
+            total_mem += sys.getsizeof(k)
+            total_mem += sys.getsizeof(l[l])
+            
+    return total_mem
 
 mem_use = []
 time_use = []
