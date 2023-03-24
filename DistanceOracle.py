@@ -165,11 +165,11 @@ def preprocess(G, k = 3):
         sample_size = np.random.binomial(len(A[i-1]), len(A[0])**(-1/(k)))
         
         # Use builtin method to pick random vertices from previous sets
-        A.append(set(sample(A[i-1], sample_size)))
+        #A.append(set(sample(A[i-1], sample_size)))
         
         # Get the most connected vertices
-        #prev = sorted(A[i-1], key=lambda x: len(G.get_node(x).get_neighbors()))
-        #A.append(set(prev[-sample_size:]))
+        prev = sorted(A[i-1], key=lambda x: len(G.get_node(x).get_neighbors()))
+        A.append(set(prev[-sample_size:]))
         
         # Get the most central vertices
         #prev = sorted(A[i-1], key=lambda x: avg_dists[x])
@@ -296,7 +296,7 @@ def get_clusters(G, A, C, delta, delta_Ai, i):
     queue = []
     
     # For every sampled node, not in the next layer
-    for w in tqdm(A[i] - A[i+1]):
+    for w in A[i] - A[i+1]:
         
         heap.heappush(queue, (0, w))
         seen = set()
@@ -366,8 +366,8 @@ def get_number_of_bins(factors):
 def plot_mem_time_use(mem_use_1, mem_use_2, time_use_1, time_use_2):
 
     
-    plt.plot(range(2,500), mem_use_1, c=(0.77, 0, 0.05))
-    plt.plot(range(2,500), mem_use_2, c=(0.12, 0.24, 1))
+    plt.plot(range(2,500), [sum(m) for m in mem_use_1], c=(0.77, 0, 0.05))
+    plt.plot(range(2,500), [sum(m) for m in mem_use_2], c=(0.12, 0.24, 1))
     plt.xlabel("k")
     plt.ylabel("bytes")
     plt.title("Memory usage of the oracle")
@@ -380,8 +380,8 @@ def plot_mem_time_use(mem_use_1, mem_use_2, time_use_1, time_use_2):
     plt.title("Time usage of the preprocessing algorithm")
     plt.show()
     
-    plt.plot(range(15,500), mem_use_1[13:], c=(0.77, 0, 0.05))
-    plt.plot(range(15,500), mem_use_2[13:], c=(0.12, 0.24, 1))
+    plt.plot(range(15,500), [sum(m) for m in mem_use_1[13:]], c=(0.77, 0, 0.05))
+    plt.plot(range(15,500), [sum(m) for m in mem_use_2[13:]], c=(0.12, 0.24, 1))
     plt.xlabel("k")
     plt.ylabel("bytes")
     plt.title("Memory usage of the oracle (k>20)")
@@ -390,29 +390,29 @@ def plot_mem_time_use(mem_use_1, mem_use_2, time_use_1, time_use_2):
 def get_mem_usage(delta, B, p):
     total_mem = 0
     
-    total_mem += sys.getsizeof(delta)
+    delta_mem = sys.getsizeof(delta)
     
     for k in delta:
-        total_mem += sys.getsizeof(k[0])
-        total_mem += sys.getsizeof(k[1])
-        total_mem += sys.getsizeof(delta[k])
+        delta_mem += sys.getsizeof(k[0])
+        delta_mem += sys.getsizeof(k[1])
+        delta_mem += sys.getsizeof(delta[k])
         
-    total_mem += sys.getsizeof(B)
+    B_mem = sys.getsizeof(B)
     
     for k in B:
-        total_mem += sys.getsizeof(k)
-        total_mem += sys.getsizeof(B[k])
+        B_mem += sys.getsizeof(k)
+        B_mem += sys.getsizeof(B[k])
         
-    total_mem += sys.getsizeof(p)
+    p_mem = sys.getsizeof(p)
     
     for l in p:
-        total_mem += sys.getsizeof(l)
+        p_mem += sys.getsizeof(l)
         
         for k in l:
-            total_mem += sys.getsizeof(k)
-            total_mem += sys.getsizeof(l[l])
+            p_mem += sys.getsizeof(k)
+            p_mem += sys.getsizeof(l[k])
             
-    return total_mem
+    return (delta_mem, B_mem, p_mem)
 
 mem_use = []
 time_use = []
@@ -429,11 +429,11 @@ while k < 500:
     delta = dict(delta)
     #delta, B, p = load_data()
     
-    save_data(delta, B, p)
+    #save_data(delta, B, p)
         
-    mem_use.append(sys.getsizeof(delta) + sys.getsizeof(B) + sys.getsizeof(p))
+    delta_mem, B_mem, p_mem = get_mem_usage(delta, B, p)
+    mem_use.append((delta_mem, B_mem, p_mem))
     time_use.append(time_end - time_start)
-    print(time_end - time_start)
     
     
 # =============================================================================
