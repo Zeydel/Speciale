@@ -176,30 +176,28 @@ def preprocess(G, k = 3):
         #A.append(set(prev[:sample_size]))
         
         # Find j centers
-# =============================================================================
-#         Ai = set()
-#         cur = sample(A[i-1], 1)[0]
-#         Ai.add(cur)
-#         dists = {key: float('inf') for key in A[i-1]}
-#         while len(Ai) < sample_size:
-#             
-#             for key, v in get_min_dist(G, cur).items():
-#                 
-#                 if key in dists: 
-#                     dists[key] = min(dists[key], v)
-#             
-#             
-#             max_dist = float('-inf')
-#             cur = None
-#             for key, v in dists.items():
-#                 if v > max_dist:
-#                     max_dist = v
-#                     cur = key
-#             
-#             Ai.add(cur)
-# =============================================================================
+        Ai = set()
+        cur = sample(A[i-1], 1)[0]
+        Ai.add(cur)
+        dists = {key: float('inf') for key in A[i-1]}
+        while len(Ai) < sample_size:
             
-        #A.append(Ai)
+            for key, v in get_min_dist(G, cur).items():
+                
+                if key in dists: 
+                    dists[key] = min(dists[key], v)
+            
+            
+            max_dist = float('-inf')
+            cur = None
+            for key, v in dists.items():
+                if v > max_dist:
+                    max_dist = v
+                    cur = key
+            
+            Ai.add(cur)
+            
+        A.append(Ai)
             
         
     # A[k] is the empty set
@@ -446,7 +444,7 @@ mem_use = []
 time_use = []
 G = parse("input_roads.txt")
 k = 2
-while k < 500:
+while k < 101:
     print(k)
     time_start = time.time()
     delta, B, p = preprocess(G, k)
