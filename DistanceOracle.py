@@ -2,6 +2,7 @@ import sys
 import pickle
 import os
 import time
+import math
 import numpy as np
 import heapq as heap
 import matplotlib.pyplot as plt
@@ -64,7 +65,13 @@ class Graph:
         
     def get_nodes(self):
         return [k for k in self.nodes]
+
+class TreeNode:
     
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.j = None
+        self.max_delta = float('-inf')
     
 def parse(filename='input.txt'):
     f = open(filename, 'r')
@@ -176,28 +183,30 @@ def preprocess(G, k = 3):
         #A.append(set(prev[:sample_size]))
         
         # Find j centers
-        Ai = set()
-        cur = sample(A[i-1], 1)[0]
-        Ai.add(cur)
-        dists = {key: float('inf') for key in A[i-1]}
-        while len(Ai) < sample_size:
-            
-            for key, v in get_min_dist(G, cur).items():
-                
-                if key in dists: 
-                    dists[key] = min(dists[key], v)
-            
-            
-            max_dist = float('-inf')
-            cur = None
-            for key, v in dists.items():
-                if v > max_dist:
-                    max_dist = v
-                    cur = key
-            
-            Ai.add(cur)
-            
-        A.append(Ai)
+# =============================================================================
+#         Ai = set()
+#         cur = sample(A[i-1], 1)[0]
+#         Ai.add(cur)
+#         dists = {key: float('inf') for key in A[i-1]}
+#         while len(Ai) < sample_size:
+#             
+#             for key, v in get_min_dist(G, cur).items():
+#                 
+#                 if key in dists: 
+#                     dists[key] = min(dists[key], v)
+#             
+#             
+#             max_dist = float('-inf')
+#             cur = None
+#             for key, v in dists.items():
+#                 if v > max_dist:
+#                     max_dist = v
+#                     cur = key
+#             
+#             Ai.add(cur)
+#             
+#         A.append(Ai)
+# =============================================================================
             
         
     # A[k] is the empty set
@@ -294,7 +303,7 @@ def get_clusters(G, A, C, delta, delta_Ai, i):
     queue = []
     
     # For every sampled node, not in the next layer
-    for w in tqdm(A[i] - A[i+1]):
+    for w in A[i] - A[i+1]:
         
         heap.heappush(queue, (0, w))
         seen = set()
@@ -324,6 +333,154 @@ def get_clusters(G, A, C, delta, delta_Ai, i):
     
     return (delta, C)
  
+def get_d(G, k, delta, p):
+    
+    d = list()
+    
+    for i in range(0, k-2):
+        d.append(dict())
+        for u in G.get_nodes():
+            v1 = delta[(p[i+2][u], u)]
+            v2 = delta[(p[i][u], u)]
+            d[i][u] = v1 - v2
+            
+    return d
+    
+def build_T(I):
+    
+    T = [-1]
+    
+    T.append(TreeNode(I))
+    
+    i = 1
+    
+    while i < len(T):
+        if T[i] == None:
+            i += 1
+            continue
+        if len(T[i].sequence) > 2: 
+            T.append(TreeNode(T[i].sequence[:len(T[i].sequence)//2+1]))
+            T.append(TreeNode(T[i].sequence[len(T[i].sequence)//2:]))
+        else:
+            T.append(None)
+            T.append(None)
+            
+        i += 1
+    
+    return T
+
+def enrich_T(T, delta, p, u):
+    
+    for i in range(len(T)-1, 0, -1):
+        
+        if T[i] == None:
+            continue
+        
+        if len(T[i].sequence) == 2:
+            
+            for j in T[i].sequence:
+                
+                if delta[(p[j+2][u], u)] - delta[(p[j][u], u)] > T[i].max_delta:
+                    T[i].max_delta = delta[(p[j+2][u], u)] - delta[(p[j][u], u)]
+                    T[i].j = j
+            continue
+    
+        if T[i*2].max_delta > T[(i*2)+1].max_delta:
+            T[i].max_delta = T[i*2].max_delta
+            T[i].j = T[i*2].j
+        else:
+            T[i].max_delta = T[(i*2)+1].max_delta
+            T[i].j = T[(i*2)+1].j
+            
+    return T
+    
+def get_j(T, i1, i2):
+    
+    a, b = 1, 1
+    
+    while len(T[a].sequence) > 2:
+        if i1 in T[a*2].sequence:
+            a = a*2
+        else:
+            a = (a*2)+1
+    
+    while len(T[b].sequence) > 2:
+        if i2 in T[(b*2)+1].sequence:
+            b = (b*2)+1
+        else:
+            b = b*2
+            
+    S = set()
+    
+    while a <= b:
+        
+        if a % 2 == 1:
+            S.add(T[a])
+            a += 1
+        if b % 2 == 0:
+            S.add(T[b])
+            b -= 1
+            
+        a = a // 2
+        b = b // 2
+        
+    j = None
+    max_delta = float('-inf')
+    
+    for s in S:
+        
+        if s.max_delta > max_delta:
+            max_delta = s.max_delta
+            j = s.j
+            
+    return j
+        
+    
+    
+    
+def get_d(G, k, delta, p):
+    
+    d = dict()
+    
+    for u in G.get_nodes():
+        I = [i for i in range(k-2) if i % 2 == 0]
+        T = build_T(I)
+        T = enrich_T(T, delta, p, u)
+        
+        d[u] = dict()    
+        
+        nodes = set()
+        nodes.add(1)
+        
+        while len(nodes) > 0:
+            cur = nodes.pop()
+            
+            if T[cur] == None:
+                continue
+            
+            d[u][(T[cur].sequence[0], T[cur].sequence[-1])] = T[cur].j
+            
+            if cur*2 < len(T):
+                nodes.add(cur*2)
+                
+            if (cur*2)+1 < len(T):
+                nodes.add((cur*2)+1)
+                
+        for i1 in range(0, k-2, 2):
+            low = i1 + math.ceil(math.log2(k))
+            
+            if low % 2 == 1:
+                low += 1
+            
+            for i2 in range(low, k-2, 2):
+                
+                if (i1, i2) not in d[u]:
+                    d[u][(i1, i2)] = get_j(T, i1, i2)
+                
+    return d
+        
+    
+ 
 def save_data(delta, B, p):
 
     file_name = 'pickle.pkl'       
@@ -339,9 +496,41 @@ def load_data():
         
     return (delta, B, p)
 
-def query(B, delta, p, u, v):
+def bquery(B, delta, p, k, u, v, i1, i2):
+    if i2 - i1 <= math.log2(k):
+        return query(B, delta, p, u, v, i1)
+    
+    i = (i1 + i2) // 2
+    
+    max_d = float('-inf')
+    j = None
+    
+    i_e = i
+    i1_e = i1
+    
+    if i_e % 2 == 1:
+        i_e -= 1
+    
+    if i1_e % 2 == 1:
+        i1_e += 1
+    
+    j = d[u][()]
+    
+    for l in [a for a in range(i1, i-1) if a%2 == 0]:
+        
+        if d[l][u] > max_d:
+            max_d = d[l][u]
+            j = l
+            
+    if p[j][u] not in B[v] and p[j+1][v] not in B[u]:
+        return bquery(B, delta, p, k, u, v, i, i2)
+    else:
+        return bquery(B, delta, p, k, u, v, i1, j)
+    
+    
+
+def query(B, delta, p, u, v, i = 0):
     w = u
-    i = 0
     
     while w not in B[v]:
         i += 1
@@ -361,51 +550,63 @@ def get_number_of_bins(factors):
     
     return round((max(factors) - min(factors)) / bin_width)
     
-def plot_mem_time_use(mem_use_1, mem_use_2, time_use_1, time_use_2):
+def plot_mem_time_use(mem_uses, time_uses):
 
+    colors = [
+        #(0.77, 0, 0.05),
+        (0.12, 0.24, 1),
+        (0.31, 1, 0.34),
+        (1, 0.35, 0.14)
+        ]
     
-    plt.plot(range(2,500), [sum(m) for m in mem_use_1], c=(0.77, 0, 0.05))
-    plt.plot(range(2,500), [sum(m) for m in mem_use_2], c=(0.12, 0.24, 1))
-    plt.ylim(0, 2000000000)
+    max_len = max([len(m) for m in mem_uses])
+    
+    for i in range(len(mem_uses)):
+        mem_uses[i] = mem_uses[i] + ([None] * (max_len-len(mem_uses[i])))
+        time_uses[i] = time_uses[i] + ([None] * (max_len-len(time_uses[i])))
+    
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(2,500), [None if m == None else sum(m) for m in mem_use], c=colors[i])
+    plt.ylim(0, 20000000000)
     plt.xlabel("k")
     plt.ylabel("bytes")
     plt.title("Memory usage of the oracle")
     plt.show()
     
-    plt.plot(range(2,500), time_use_1, color=(0.77, 0, 0.05))    
-    plt.plot(range(2,500), time_use_2, c=(0.12, 0.24, 1))
+    for i, time_use in enumerate(time_uses):
+        plt.plot(range(2,500), time_use, c=colors[i])    
     plt.xlabel("k")
     plt.ylabel("seconds")
     plt.title("Time usage of the preprocessing algorithm")
     plt.show()
     
-    plt.plot(range(22,500), [sum(m) for m in mem_use_1[20:]], c=(0.77, 0, 0.05))
-    plt.plot(range(22,500), [sum(m) for m in mem_use_1[20:]], c=(0.12, 0.24, 1))
-    plt.ylim(0, 2000000000)
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(22,500), [None if m == None else sum(m) for m in mem_use[20:]], c=colors[i])
+    plt.ylim(0, 20000000000)
     plt.xlabel("k")
     plt.ylabel("bytes")
     plt.title("Memory usage of the oracle (k>20)")
     plt.show()
     
-    plt.plot(range(2,500), [m[0] for m in mem_use_1], c=(0.77, 0, 0.05))
-    plt.plot(range(2,500), [m[0] for m in mem_use_2], c=(0.12, 0.24, 1))
-    plt.ylim(0, 2000000000)
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(2,500), [None if m == None else m[0] for m in mem_use], c=colors[i])
+    plt.ylim(0, 20000000000)
     plt.xlabel("k")
     plt.ylabel("bytes")
     plt.title("Memory usage of delta")
     plt.show()
     
-    plt.plot(range(2,500), [m[1] for m in mem_use_1], c=(0.77, 0, 0.05))
-    plt.plot(range(2,500), [m[1] for m in mem_use_2], c=(0.12, 0.24, 1))
-    plt.ylim(0, 2000000000)
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(2,500), [None if m == None else m[1] for m in mem_use], c=colors[i])
+    plt.ylim(0, 20000000000)
     plt.xlabel("k")
     plt.ylabel("bytes")
     plt.title("Memory usage of B")
     plt.show()
     
-    plt.plot(range(2,500), [m[2] for m in mem_use_1], c=(0.77, 0, 0.05))
-    plt.plot(range(2,500), [m[2] for m in mem_use_2], c=(0.12, 0.24, 1))
-    plt.ylim(0, 2000000000)
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(2,500), [None if m == None else m[2] for m in mem_use], c=colors[i])
+    plt.ylim(0, 20000000000)
     plt.xlabel("k")
     plt.ylabel("bytes")
     plt.title("Memory usage of p")
@@ -443,7 +644,14 @@ def get_mem_usage(delta, B, p):
 mem_use = []
 time_use = []
 G = parse("input_roads.txt")
-k = 2
+k = 16
+
+times = []
+times_fast = []
+
+appx_factors = []
+appx_factors_fast = []
+
 while k < 101:
     print(k)
     time_start = time.time()
@@ -453,35 +661,62 @@ while k < 101:
     
     time_end = time.time()
     delta = dict(delta)
+    d = get_d(G, k, delta, p)
     #delta, B, p = load_data()
     
-    save_data(delta, B, p)
+    #save_data(delta, B, p)
         
     mem_use.append(sys.getsizeof(delta) + sys.getsizeof(B) + sys.getsizeof(p))
     time_use.append(time_end - time_start)
-    print(time_end - time_start)
+    print('tid')
     
+    
+    appx_factors_k = []
+    appx_factors_fast_k = []
+    
+
+    
+    sample_pairs = []
+    sample_pair_dists = dict()
+    
+    
+    
+    for _ in tqdm(range(1000)):
+        u, v = sample(G.get_nodes(), 2)
+    
+        sample_pairs.append((u,v))
+    
+        dists = get_min_dist(G, u)    
+        sample_pair_dists[(u,v)] = dists[v]
+    
+    start = time.time()    
+    
+    for u, v in sample_pairs:
+        approx = query(B, delta, p, u, v)
+        appx_factors_k.append(approx/sample_pair_dists[(u,v)])
+        
+    end = time.time()
+    time_std = end - start
+            
+    start = time.time()
+    
+    for u, v in sample_pairs:
+        approx = bquery(B, delta, p, u, v, 0, k-1)
+        appx_factors_fast_k.append(approx/sample_pair_dists[(u,v)])
+        
+    end = time.time()
+    
+    time_fast = end-start
+    times.append(time_std)
+    times_fast.append(time_fast)    
+    
+    appx_factors.append(appx_factors_k)
+    appx_factors_fast.append(appx_factors_fast_k)
+    
+    #print(stretchSum / len(list(combinations(G.get_nodes(), 2))))
+    #print(stretchSum / 10000)   
     
 # =============================================================================
-#     appx_factors = []
-#     
-#     for _ in tqdm(range(10000)):
-#         u, v = sample(G.get_nodes(), 2)
-#     
-#         dists = get_min_dist(G, u)    
-#         
-#         approx = query(B, delta, p, u, v)
-#         
-#         appx_factors.append(approx/dists[v])
-#         
-#         if approx/dists[v] > (2*k)-1:
-#             print(u)
-#             print(v)
-#             print(approx/dists[v])
-#         
-#     #print(stretchSum / len(list(combinations(G.get_nodes(), 2))))
-#     #print(stretchSum / 10000)   
-#     
 #     flierprops = dict(marker='o', markerfacecolor=(0.77, 0, 0.05))
 #     medianprops = dict(color=(0.77, 0, 0.05))
 #     meanlineprops = dict(linestyle='-', color=(0.12, 0.24, 1))
@@ -498,6 +733,6 @@ while k < 101:
 #     plt.title(f'Line Graph, Sample Centers, k={k}')
 #     plt.savefig(f'Hist, Line Graph, Sample Centers, k={k}.png', bbox_inches='tight')
 #     plt.show()
-# 
 # =============================================================================
+
     k += 1
