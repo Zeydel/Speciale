@@ -333,18 +333,20 @@ def get_clusters(G, A, C, delta, delta_Ai, i):
     
     return (delta, C)
  
-def get_d(G, k, delta, p):
-    
-    d = list()
-    
-    for i in range(0, k-2):
-        d.append(dict())
-        for u in G.get_nodes():
-            v1 = delta[(p[i+2][u], u)]
-            v2 = delta[(p[i][u], u)]
-            d[i][u] = v1 - v2
-            
-    return d
+# =============================================================================
+# def get_d(G, k, delta, p):
+#     
+#     d = list()
+#     
+#     for i in range(0, k-2):
+#         d.append(dict())
+#         for u in G.get_nodes():
+#             v1 = delta[(p[i+2][u], u)]
+#             v2 = delta[(p[i][u], u)]
+#             d[i][u] = v1 - v2
+#             
+#     return d
+# =============================================================================
     
 def build_T(I):
     
@@ -394,35 +396,27 @@ def enrich_T(T, delta, p, u):
             
     return T
     
-def get_j(T, i1, i2):
-    
-    a, b = 1, 1
-    
-    while len(T[a].sequence) > 2:
-        if i1 in T[a*2].sequence:
-            a = a*2
-        else:
-            a = (a*2)+1
-    
-    while len(T[b].sequence) > 2:
-        if i2 in T[(b*2)+1].sequence:
-            b = (b*2)+1
-        else:
-            b = b*2
-            
+def get_s(T, i1, i2, i = 1):
     S = set()
     
-    while a <= b:
+    if T[i].sequence[0] == i1 and T[i].sequence[-1] == i2:
+        S.add(T[i])
+    
+    elif i1 in T[i*2].sequence and i2 in T[i*2].sequence:
+        S |= get_s(T, i1, i2, i*2)
+    
+    elif i1 in T[(i*2)+1].sequence and i2 in T[(i*2)+1].sequence:
+        S |= get_s(T, i1, i2, (i*2)+1)
         
-        if a % 2 == 1:
-            S.add(T[a])
-            a += 1
-        if b % 2 == 0:
-            S.add(T[b])
-            b -= 1
-            
-        a = a // 2
-        b = b // 2
+    elif i1 in T[i*2].sequence and i2 in T[(i*2)+1].sequence:
+        S |= get_s(T, i1, T[i*2].sequence[-1], i*2)
+        S |= get_s(T, T[(i*2)+1].sequence[0], i2, (i*2)+1)
+    
+    return S
+        
+def get_j(T, i1, i2):
+
+    S = get_s(T, i1, i2)
         
     j = None
     max_delta = float('-inf')
