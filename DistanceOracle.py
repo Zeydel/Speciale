@@ -460,8 +460,11 @@ def get_d(G, k, delta, p):
             if (cur*2)+1 < len(T):
                 nodes.add((cur*2)+1)
                 
+        
         for i1 in range(0, k-2, 2):
-            low = i1 + math.ceil(math.log2(k))
+            low = i1 + math.floor(math.log2(k)//2)
+            
+            d[u][(i1, i1)] = i1
             
             if low % 2 == 1:
                 low += 1
@@ -493,28 +496,14 @@ def load_data():
 def bquery(B, delta, p, k, u, v, i1, i2):
     if i2 - i1 <= math.log2(k):
         return query(B, delta, p, u, v, i1)
-    
+
     i = (i1 + i2) // 2
     
-    max_d = float('-inf')
-    j = None
+    if i % 2 == 1:
+        i += 1
     
-    i_e = i
-    i1_e = i1
+    j = d[u][(i1, i-2)]
     
-    if i_e % 2 == 1:
-        i_e -= 1
-    
-    if i1_e % 2 == 1:
-        i1_e += 1
-    
-    j = d[u][()]
-    
-    for l in [a for a in range(i1, i-1) if a%2 == 0]:
-        
-        if d[l][u] > max_d:
-            max_d = d[l][u]
-            j = l
             
     if p[j][u] not in B[v] and p[j+1][v] not in B[u]:
         return bquery(B, delta, p, k, u, v, i, i2)
@@ -695,7 +684,7 @@ while k < 101:
     start = time.time()
     
     for u, v in sample_pairs:
-        approx = bquery(B, delta, p, u, v, 0, k-1)
+        approx = bquery(B, delta, p, k, u, v, 0, k-1)
         appx_factors_fast_k.append(approx/sample_pair_dists[(u,v)])
         
     end = time.time()
