@@ -413,10 +413,58 @@ def get_s(T, i1, i2, i = 1):
         S |= get_s(T, T[(i*2)+1].sequence[0], i2, (i*2)+1)
     
     return S
+
+def get_depth(idx):
+    
+    return math.floor(math.log2(idx))
+
+def get_s_new(T, i1, i2):
+    
+    S = set()
+    
+    a, b = 1, 1
+    
+    while len(T[a].sequence) > 2:
+        if i1 >= T[(a*2)+1].sequence[0] and i1 <= T[(a*2)+1].sequence[-1]:
+            a = (a*2) +1
+        else:
+            a = a*2
+            
+    while len(T[b].sequence) > 2:
+        if i2 >= T[b*2].sequence[0] and i2 <= T[b*2].sequence[-1]:
+            b = b*2
+        else:
+            b = (b*2)+1
+    
+    while get_depth(a) > get_depth(b):
+        if a % 2 == 1:
+            S.add(T[a])
+            a += 1
+        a = a//2
+        
+    while get_depth(b) > get_depth(a):
+        if b % 2 == 0:
+            S.add(T[b])
+            b -= 1
+        b = b//2
+    
+    while a <= b:
+        if a % 2 == 1:
+            S.add(T[a])
+            a += 1
+        if b % 2 == 0:
+            S.add(T[b])
+            b -= 1
+            
+        a = a//2
+        b = b//2
+        
+    return S
+        
         
 def get_j(T, i1, i2):
 
-    S = get_s(T, i1, i2)
+    S = get_s_new(T, i1, i2)
         
     j = None
     max_delta = float('-inf')
@@ -464,17 +512,61 @@ def get_d(G, k, delta, p):
         for i1 in range(0, k-2, 2):
             low = i1 + math.floor(math.log2(k)//2)
             
-            d[u][(i1, i1)] = i1
-            
             if low % 2 == 1:
                 low += 1
             
+            d[u][(low, low)] = low
+            
             for i2 in range(low, k-2, 2):
+                
+                if i2 - i1 > (k//2) + 1:
+                    break
                 
                 if (i1, i2) not in d[u]:
                     d[u][(i1, i2)] = get_j(T, i1, i2)
                 
     return d
+
+
+def get_d_new(G, k, delta, p):
+    
+    d_max = dict()
+    d = dict()
+    
+    
+    for u in G.get_nodes():
+    
+        for i in range(0, k-4, 2):
+            if delta[(p[i+2][u], u)] - delta[(p[i][u], u)] > delta[(p[i+4][u], u)] - delta[(p[i+2][u], u)]:
+                d_max[(i, i+2)] = delta[(p[i+2][u], u)] - delta[(p[i][u], u)]
+                d[(i, i+2)] = i
+            else:
+                d_max[(i, i+2)] = delta[(p[i+4][u], u)] - delta[(p[i+2][u], u)]
+                d[(i, i+2)] = i+2
+        
+        for l in range(2, (k//2) + 1):
+            for i1 in range(0, k-2-(2*l), 2):
+                
+                i2 = i1 + (2*l)
+                
+                
+                i = (i1 + i2) // 2
+                if i % 2 == 1:
+                    i += 1
+                
+                if d_max[i1, i] > d_max[i, i2]:
+                    d_max[i1, i2] = d_max[i1, i]
+                    d[i1,i2] = d[i1, i]
+                else:
+                    d_max[i1, i2] = d_max[i, i2]
+                    d[i1, i2] = d[i, i2]
+            
+                    
+    return d
+            
+            
+            
+        
         
     
  
@@ -536,64 +628,68 @@ def get_number_of_bins(factors):
 def plot_mem_time_use(mem_uses, time_uses):
 
     colors = [
-        #(0.77, 0, 0.05),
+        (0.77, 0, 0.05),
         (0.12, 0.24, 1),
         (0.31, 1, 0.34),
         (1, 0.35, 0.14)
         ]
     
-    max_len = max([len(m) for m in mem_uses])
+    max_len = max([len(m) for m in time_uses])
     
-    for i in range(len(mem_uses)):
-        mem_uses[i] = mem_uses[i] + ([None] * (max_len-len(mem_uses[i])))
+    for i in range(len(time_uses)):
+        #mem_uses[i] = mem_uses[i] + ([None] * (max_len-len(mem_uses[i])))
         time_uses[i] = time_uses[i] + ([None] * (max_len-len(time_uses[i])))
     
-    for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(2,500), [None if m == None else sum(m) for m in mem_use], c=colors[i])
-    plt.ylim(0, 20000000000)
-    plt.xlabel("k")
-    plt.ylabel("bytes")
-    plt.title("Memory usage of the oracle")
-    plt.show()
-    
+# =============================================================================
+#     for i, mem_use in enumerate(mem_uses):
+#         plt.plot(range(16,500), [None if m == None else m for m in mem_use], c=colors[i])
+#     plt.ylim(0, 2000000000)
+#     plt.xlabel("k")
+#     plt.ylabel("bytes")
+#     plt.title("Memory usage of the oracle")
+#     plt.show()
+#     
+# =============================================================================
     for i, time_use in enumerate(time_uses):
-        plt.plot(range(2,500), time_use, c=colors[i])    
+        plt.plot(range(16,500), time_use, c=colors[i])    
     plt.xlabel("k")
-    plt.ylabel("seconds")
+    plt.ylabel("Seconds")
     plt.title("Time usage of the preprocessing algorithm")
     plt.show()
     
-    for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(22,500), [None if m == None else sum(m) for m in mem_use[20:]], c=colors[i])
-    plt.ylim(0, 20000000000)
-    plt.xlabel("k")
-    plt.ylabel("bytes")
-    plt.title("Memory usage of the oracle (k>20)")
-    plt.show()
-    
-    for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(2,500), [None if m == None else m[0] for m in mem_use], c=colors[i])
-    plt.ylim(0, 20000000000)
-    plt.xlabel("k")
-    plt.ylabel("bytes")
-    plt.title("Memory usage of delta")
-    plt.show()
-    
-    for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(2,500), [None if m == None else m[1] for m in mem_use], c=colors[i])
-    plt.ylim(0, 20000000000)
-    plt.xlabel("k")
-    plt.ylabel("bytes")
-    plt.title("Memory usage of B")
-    plt.show()
-    
-    for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(2,500), [None if m == None else m[2] for m in mem_use], c=colors[i])
-    plt.ylim(0, 20000000000)
-    plt.xlabel("k")
-    plt.ylabel("bytes")
-    plt.title("Memory usage of p")
-    plt.show()
+# =============================================================================
+#     for i, mem_use in enumerate(mem_uses):
+#         plt.plot(range(22,500), [None if m == None else sum(m) for m in mem_use[20:]], c=colors[i])
+#     plt.ylim(0, 20000000000)
+#     plt.xlabel("k")
+#     plt.ylabel("bytes")
+#     plt.title("Memory usage of the oracle (k>20)")
+#     plt.show()
+#     
+#     for i, mem_use in enumerate(mem_uses):
+#         plt.plot(range(2,500), [None if m == None else m[0] for m in mem_use], c=colors[i])
+#     plt.ylim(0, 20000000000)
+#     plt.xlabel("k")
+#     plt.ylabel("bytes")
+#     plt.title("Memory usage of delta")
+#     plt.show()
+#     
+#     for i, mem_use in enumerate(mem_uses):
+#         plt.plot(range(2,500), [None if m == None else m[1] for m in mem_use], c=colors[i])
+#     plt.ylim(0, 20000000000)
+#     plt.xlabel("k")
+#     plt.ylabel("bytes")
+#     plt.title("Memory usage of B")
+#     plt.show()
+#     
+#     for i, mem_use in enumerate(mem_uses):
+#         plt.plot(range(2,500), [None if m == None else m[2] for m in mem_use], c=colors[i])
+#     plt.ylim(0, 20000000000)
+#     plt.xlabel("k")
+#     plt.ylabel("bytes")
+#     plt.title("Memory usage of p")
+#     plt.show()
+# =============================================================================
     
     
 
@@ -626,6 +722,8 @@ def get_mem_usage(delta, B, p):
 
 mem_use = []
 time_use = []
+time_use_with_d = []
+
 G = parse("input_roads.txt")
 k = 16
 
@@ -635,7 +733,7 @@ times_fast = []
 appx_factors = []
 appx_factors_fast = []
 
-while k < 101:
+while k < 500:
     print(k)
     time_start = time.time()
     delta, B, p = preprocess(G, k)
@@ -643,58 +741,64 @@ while k < 101:
         continue
     
     time_end = time.time()
-    delta = dict(delta)
+    time_use.append(time_end - time_start)
+    
+   
+    
     d = get_d(G, k, delta, p)
+    time_use_with_d.append(time.time() - time_start)
+    
     #delta, B, p = load_data()
     
     #save_data(delta, B, p)
-        
-    mem_use.append(sys.getsizeof(delta) + sys.getsizeof(B) + sys.getsizeof(p))
-    time_use.append(time_end - time_start)
-    print('tid')
-    
-    
-    appx_factors_k = []
-    appx_factors_fast_k = []
-    
-
-    
-    sample_pairs = []
-    sample_pair_dists = dict()
-    
-    
-    
-    for _ in tqdm(range(1000)):
-        u, v = sample(G.get_nodes(), 2)
-    
-        sample_pairs.append((u,v))
-    
-        dists = get_min_dist(G, u)    
-        sample_pair_dists[(u,v)] = dists[v]
-    
-    start = time.time()    
-    
-    for u, v in sample_pairs:
-        approx = query(B, delta, p, u, v)
-        appx_factors_k.append(approx/sample_pair_dists[(u,v)])
-        
-    end = time.time()
-    time_std = end - start
-            
-    start = time.time()
-    
-    for u, v in sample_pairs:
-        approx = bquery(B, delta, p, k, u, v, 0, k-1)
-        appx_factors_fast_k.append(approx/sample_pair_dists[(u,v)])
-        
-    end = time.time()
-    
-    time_fast = end-start
-    times.append(time_std)
-    times_fast.append(time_fast)    
-    
-    appx_factors.append(appx_factors_k)
-    appx_factors_fast.append(appx_factors_fast_k)
+# =============================================================================
+#     delta = dict(delta)
+#          
+#     mem_use.append(get_mem_usage(delta, B, p))
+#     
+#     
+#     appx_factors_k = []
+#     appx_factors_fast_k = []
+#     
+# 
+#     
+#     sample_pairs = []
+#     sample_pair_dists = dict()
+#     
+#     
+#     
+#     for _ in tqdm(range(50)):
+#         u, v = sample(G.get_nodes(), 2)
+#     
+#         sample_pairs.append((u,v))
+#     
+#         dists = get_min_dist(G, u)    
+#         sample_pair_dists[(u,v)] = dists[v]
+#     
+#     start = time.time()    
+#     
+#     for u, v in sample_pairs:
+#         approx = query(B, delta, p, u, v)
+#         appx_factors_k.append(approx/sample_pair_dists[(u,v)])
+#         
+#     end = time.time()
+#     time_std = end - start
+#             
+#     start = time.time()
+#     
+#     for u, v in sample_pairs:
+#         approx = bquery(B, delta, p, k, u, v, 0, k-1)
+#         appx_factors_fast_k.append(approx/sample_pair_dists[(u,v)])
+#         
+#     end = time.time()
+#     
+#     time_fast = end-start
+#     times.append(time_std)
+#     times_fast.append(time_fast)    
+#     
+#     appx_factors.append(appx_factors_k)
+#     appx_factors_fast.append(appx_factors_fast_k)
+# =============================================================================
     
     #print(stretchSum / len(list(combinations(G.get_nodes(), 2))))
     #print(stretchSum / 10000)   
