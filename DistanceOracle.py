@@ -13,6 +13,7 @@ from random import random
 from collections import defaultdict
 from itertools import combinations
 from tqdm import tqdm
+import networkx as nx
 
 
 
@@ -536,13 +537,16 @@ def get_d_new(G, k, delta, p):
     
     for u in G.get_nodes():
     
+        d[u] = dict()
+        d_max[u] = dict()
+    
         for i in range(0, k-4, 2):
             if delta[(p[i+2][u], u)] - delta[(p[i][u], u)] > delta[(p[i+4][u], u)] - delta[(p[i+2][u], u)]:
-                d_max[(i, i+2)] = delta[(p[i+2][u], u)] - delta[(p[i][u], u)]
-                d[(i, i+2)] = i
+                d_max[u][(i, i+2)] = delta[(p[i+2][u], u)] - delta[(p[i][u], u)]
+                d[u][(i, i+2)] = i
             else:
-                d_max[(i, i+2)] = delta[(p[i+4][u], u)] - delta[(p[i+2][u], u)]
-                d[(i, i+2)] = i+2
+                d_max[u][(i, i+2)] = delta[(p[i+4][u], u)] - delta[(p[i+2][u], u)]
+                d[u][(i, i+2)] = i+2
         
         for l in range(2, (k//2) + 1):
             for i1 in range(0, k-2-(2*l), 2):
@@ -554,17 +558,50 @@ def get_d_new(G, k, delta, p):
                 if i % 2 == 1:
                     i += 1
                 
-                if d_max[i1, i] > d_max[i, i2]:
-                    d_max[i1, i2] = d_max[i1, i]
-                    d[i1,i2] = d[i1, i]
+                if d_max[u][i1, i] > d_max[u][i, i2]:
+                    d_max[u][i1, i2] = d_max[u][i1, i]
+                    d[u][i1,i2] = d[u][i1, i]
                 else:
-                    d_max[i1, i2] = d_max[i, i2]
-                    d[i1, i2] = d[i, i2]
+                    d_max[u][i1, i2] = d_max[u][i, i2]
+                    d[u][i1, i2] = d[u][i, i2]
             
                     
     return d
             
+def get_d_naive(G, k, delta, p):
+
+    d = dict()
+    
+    for u in G.get_nodes():
+        
+        d[u] = dict()    
+        
+        nodes = set()
+        nodes.add(1)
+                        
+        
+        for i1 in range(0, k-2, 2):
+            low = i1 + math.floor(math.log2(k)//2)
             
+            if low % 2 == 1:
+                low += 1
+            
+            d[u][(low, low)] = low
+            
+            for i2 in range(low, k-4, 2):
+                
+                if i2 - i1 > (k//2) + 1:
+                    break
+                
+                if (i1, i2) not in d[u]:
+                    
+                    for i in range(i1, i2+1, 2):
+                        if delta[(p[i+2][u], u)] - delta[(p[i][u], u)] > delta[(p[i+4][u], u)] - delta[(p[i+2][u], u)]:
+                            d[(i1, i2)] = i
+                    
+                
+    return d
+      
             
         
         
@@ -602,7 +639,19 @@ def bquery(B, delta, p, k, u, v, i1, i2):
     else:
         return bquery(B, delta, p, k, u, v, i1, j)
     
+def bquery_new(B, delta, p, k, u, v, i1, i2):
+    if i2 - i1 <= math.log2(k):
+        return query(B, delta, p, u, v, i1)
+
+    i = (i1 + i2) // 2
     
+    if i % 2 == 1:
+        i += 1
+                
+    if p[i][u] not in B[v] and p[i+1][v] not in B[u]:
+        return bquery_new(B, delta, p, k, u, v, i, i2)
+    else:
+        return bquery_new(B, delta, p, k, u, v, i1, i)
 
 def query(B, delta, p, u, v, i = 0):
     w = u
@@ -651,7 +700,7 @@ def plot_mem_time_use(mem_uses, time_uses):
 #     
 # =============================================================================
     for i, time_use in enumerate(time_uses):
-        plt.plot(range(16,500), time_use, c=colors[i])    
+        plt.plot(range(16,max_len+16), time_use, c=colors[i])    
     plt.xlabel("k")
     plt.ylabel("Seconds")
     plt.title("Time usage of the preprocessing algorithm")
@@ -720,20 +769,34 @@ def get_mem_usage(delta, B, p):
             
     return total_mem
 
+def is_planar(G):
+    
+    nxG = nx.Graph()
+    
+    for v in G.get_nodes():
+        nxG.add_node(v)
+        
+    for v in G.get_nodes():
+        for e in G.get_node(v).get_neighbors():
+            nxG.add_edge(v, e.id)
+            
+    return nx.is_planar(nxG)
+
 mem_use = []
 time_use = []
 time_use_with_d = []
 
 G = parse("input_roads.txt")
 k = 16
+print(is_planar(G))
 
 times = []
 times_fast = []
 
 appx_factors = []
-appx_factors_fast = []
+appx_factors_new = []
 
-while k < 500:
+while k < 17:
     print(k)
     time_start = time.time()
     delta, B, p = preprocess(G, k)
@@ -745,81 +808,89 @@ while k < 500:
     
    
     
-    d = get_d(G, k, delta, p)
+    d = get_d_new(G, k, delta, p)
     time_use_with_d.append(time.time() - time_start)
     
     #delta, B, p = load_data()
     
     #save_data(delta, B, p)
-# =============================================================================
-#     delta = dict(delta)
-#          
-#     mem_use.append(get_mem_usage(delta, B, p))
-#     
-#     
-#     appx_factors_k = []
-#     appx_factors_fast_k = []
-#     
-# 
-#     
-#     sample_pairs = []
-#     sample_pair_dists = dict()
-#     
-#     
-#     
-#     for _ in tqdm(range(50)):
-#         u, v = sample(G.get_nodes(), 2)
-#     
-#         sample_pairs.append((u,v))
-#     
-#         dists = get_min_dist(G, u)    
-#         sample_pair_dists[(u,v)] = dists[v]
-#     
-#     start = time.time()    
-#     
-#     for u, v in sample_pairs:
-#         approx = query(B, delta, p, u, v)
-#         appx_factors_k.append(approx/sample_pair_dists[(u,v)])
-#         
-#     end = time.time()
-#     time_std = end - start
-#             
-#     start = time.time()
-#     
-#     for u, v in sample_pairs:
-#         approx = bquery(B, delta, p, k, u, v, 0, k-1)
-#         appx_factors_fast_k.append(approx/sample_pair_dists[(u,v)])
-#         
-#     end = time.time()
-#     
-#     time_fast = end-start
-#     times.append(time_std)
-#     times_fast.append(time_fast)    
-#     
-#     appx_factors.append(appx_factors_k)
-#     appx_factors_fast.append(appx_factors_fast_k)
-# =============================================================================
+    delta = dict(delta)
+         
+    mem_use.append(get_mem_usage(delta, B, p))
+    
+    
+    appx_factors_k = []
+    appx_factors_new_k = []
+    
+
+    
+    sample_pairs = []
+    sample_pair_dists = dict()
+    
+    
+    
+    for _ in tqdm(range(5000)):
+        u, v = sample(G.get_nodes(), 2)
+    
+        sample_pairs.append((u,v))
+    
+        dists = get_min_dist(G, u)    
+        sample_pair_dists[(u,v)] = dists[v]
+    
+    start = time.time()    
+    
+    for u, v in sample_pairs:
+        approx = bquery(B, delta, p, k, u, v, 0, k-1)
+        appx_factors_k.append(approx/sample_pair_dists[(u,v)])
+        
+    end = time.time()
+    time_std = end - start
+            
+    start = time.time()
+    
+    for u, v in sample_pairs:
+        approx = bquery_new(B, delta, p, k, u, v, 0, k-1)
+        appx_factors_new_k.append(approx/sample_pair_dists[(u,v)])
+        
+    end = time.time()
+    
+    time_fast = end-start
+    times.append(time_std)
+    times_fast.append(time_fast)    
+    
+    appx_factors.append(appx_factors_k)
+    appx_factors_new.append(appx_factors_new_k)
     
     #print(stretchSum / len(list(combinations(G.get_nodes(), 2))))
     #print(stretchSum / 10000)   
     
-# =============================================================================
-#     flierprops = dict(marker='o', markerfacecolor=(0.77, 0, 0.05))
-#     medianprops = dict(color=(0.77, 0, 0.05))
-#     meanlineprops = dict(linestyle='-', color=(0.12, 0.24, 1))
-#     
-#     plt.boxplot(appx_factors, flierprops=flierprops, medianprops=medianprops, meanprops=meanlineprops, showmeans=True, meanline=True)
-#     plt.title(f'Line Graph, Sample Centers, k={k}')
-#     plt.savefig(f'Box, Line Graph, Sample Centers, k={k}.png', bbox_inches='tight')
-#     plt.show()
-#     plt.hist(appx_factors, bins=get_number_of_bins(appx_factors), label = 'Approximation Factors', color=(0.77, 0, 0.05))
-#     mn, mx = plt.xlim()
-#     plt.xlim(mn, mx)
-#     plt.legend(loc = 'upper right')
-#     plt.xlabel('Approximation Factors')
-#     plt.title(f'Line Graph, Sample Centers, k={k}')
-#     plt.savefig(f'Hist, Line Graph, Sample Centers, k={k}.png', bbox_inches='tight')
-#     plt.show()
-# =============================================================================
-
+    flierprops = dict(marker='o', markerfacecolor=(0.77, 0, 0.05))
+    medianprops = dict(color=(0.77, 0, 0.05))
+    meanlineprops = dict(linestyle='-', color=(0.12, 0.24, 1))
+    
+    plt.boxplot(appx_factors_k, flierprops=flierprops, showfliers=False, medianprops=medianprops, meanprops=meanlineprops, showmeans=True, meanline=True)
+    plt.title(f'Fast query with additional preprocessing, k={k}')
+    plt.savefig(f'Box, Fast query with additional preprocessing.png', bbox_inches='tight')
+    plt.show()
+    plt.hist(appx_factors_k, bins=get_number_of_bins(appx_factors_k), label = 'Approximation Factors', color=(0.77, 0, 0.05))
+    mn, mx = plt.xlim()
+    plt.xlim(mn, mx)
+    plt.legend(loc = 'upper right')
+    plt.xlabel('Approximation Factors')
+    plt.title(f'Fast query with additional preprocessing')
+    plt.savefig(f'Hist, Fast query with additional preprocessing.png', bbox_inches='tight')
+    plt.show()
+    
+    plt.boxplot(appx_factors_new_k, flierprops=flierprops, showfliers=False, medianprops=medianprops, meanprops=meanlineprops, showmeans=True, meanline=True)
+    plt.title(f'Fast query without additional preprocessing, k={k}')
+    plt.savefig(f'Box, Fast query without additional preprocessing, k={k}.png', bbox_inches='tight')
+    plt.show()
+    plt.hist(appx_factors_new_k, bins=get_number_of_bins(appx_factors_new_k), label = 'Approximation Factors', color=(0.77, 0, 0.05))
+    mn, mx = plt.xlim()
+    plt.xlim(mn, mx)
+    plt.legend(loc = 'upper right')
+    plt.xlabel('Approximation Factors')
+    plt.title(f'Fast query without additional preprocessing, k={k}')
+    plt.savefig(f'Hist, Fast query without additional preprocessing, k={k}.png', bbox_inches='tight')
+    plt.show()
     k += 1

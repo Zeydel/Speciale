@@ -243,15 +243,16 @@ def generateRoadGraph():
         f.write(string + '\n')
 
     return nodes
+
         
-        
-if os.path.exists("input.txt"):
-    os.remove("input.txt")
+if os.path.exists("input_roads.txt"):
+    os.remove("input_roads.txt")
+
 
 #nodes = generateInput(1000, 1000, connectivity=0.05)
 #nodes = generateClusteredGraph(1000, 50000, 1000)
 #nodes = generatePlanarGraph(1000, 1000)
-nodes = generateLineGraph(1000)
+nodes = generateRoadGraph()
 
 plt.hist([nodes[n] for n in nodes], label = 'Approximation Factors', color=(0.77, 0, 0.05))
 mn, mx = plt.xlim()
