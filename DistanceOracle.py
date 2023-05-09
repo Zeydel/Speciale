@@ -683,91 +683,111 @@ def plot_mem_time_use(mem_uses, time_uses):
         (1, 0.35, 0.14)
         ]
     
-    max_len = max([len(m) for m in time_uses])
-    
-    for i in range(len(time_uses)):
-        #mem_uses[i] = mem_uses[i] + ([None] * (max_len-len(mem_uses[i])))
-        time_uses[i] = time_uses[i] + ([None] * (max_len-len(time_uses[i])))
-    
+    #max_len = max([len(m) for m in time_uses])
 # =============================================================================
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,500), [None if m == None else m for m in mem_use], c=colors[i])
-#     plt.ylim(0, 2000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of the oracle")
-#     plt.show()
 #     
+#     for i in range(len(time_uses)):
+#         #mem_uses[i] = mem_uses[i] + ([None] * (max_len-len(mem_uses[i])))
+#         time_uses[i] = time_uses[i] + ([None] * (max_len-len(time_uses[i])))
+#     
+# # =============================================================================
+# #     for i, mem_use in enumerate(mem_uses):
+# #         plt.plot(range(16,500), [None if m == None else m for m in mem_use], c=colors[i])
+# #     plt.ylim(0, 2000000000)
+# #     plt.xlabel("k")
+# #     plt.ylabel("bytes")
+# #     plt.title("Memory usage of the oracle")
+# #     plt.show()
+# #     
+# # =============================================================================
+#     for i, time_use in enumerate(time_uses):
+#         plt.plot(range(16,max_len+16), time_use, c=colors[i])    
+#     plt.xlabel("k")
+#     plt.ylabel("Seconds")
+#     plt.title("Time usage of the preprocessing algorithm")
+#     plt.show()
 # =============================================================================
-    for i, time_use in enumerate(time_uses):
-        plt.plot(range(16,max_len+16), time_use, c=colors[i])    
+    
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(16,101), [None if m == None else sum(m) for m in mem_use], c=colors[i])
+    plt.ylim(0, 1000000000)
     plt.xlabel("k")
-    plt.ylabel("Seconds")
-    plt.title("Time usage of the preprocessing algorithm")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of the oracle")
     plt.show()
     
-# =============================================================================
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(22,500), [None if m == None else sum(m) for m in mem_use[20:]], c=colors[i])
-#     plt.ylim(0, 20000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of the oracle (k>20)")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(2,500), [None if m == None else m[0] for m in mem_use], c=colors[i])
-#     plt.ylim(0, 20000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of delta")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(2,500), [None if m == None else m[1] for m in mem_use], c=colors[i])
-#     plt.ylim(0, 20000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of B")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(2,500), [None if m == None else m[2] for m in mem_use], c=colors[i])
-#     plt.ylim(0, 20000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of p")
-#     plt.show()
-# =============================================================================
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(16,101), [None if m == None else m[0] for m in mem_use], c=colors[i])
+    plt.ylim(0, 1000000000)
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of delta")
+    plt.show()
     
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(16,101), [None if m == None else m[1] for m in mem_use], c=colors[i])
+    plt.ylim(0, 1000000000)
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of B")
+    plt.show()
+    
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(16,101), [None if m == None else m[2] for m in mem_use], c=colors[i])
+    plt.ylim(0, 1000000000)
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of p")
+    plt.show()
+    
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(16,101), [None if m == None else m[3] for m in mem_use], c=colors[i])
+    plt.ylim(0, 1000000000)
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of d")
+    plt.show()
     
 
-def get_mem_usage(delta, B, p):
+def get_mem_usage(delta, B, p, d):
     total_mem = 0
     
-    total_mem += sys.getsizeof(delta)
+    delta_mem = 0
+    B_mem = 0
+    p_mem = 0
+    d_mem = 0
+    
+    delta_mem += sys.getsizeof(delta)
     
     for k in delta:
-        total_mem += sys.getsizeof(k[0])
-        total_mem += sys.getsizeof(k[1])
-        total_mem += sys.getsizeof(delta[k])
+        delta_mem += sys.getsizeof(k[0])
+        delta_mem += sys.getsizeof(k[1])
+        delta_mem += sys.getsizeof(delta[k])
         
-    total_mem += sys.getsizeof(B)
+    B_mem += sys.getsizeof(B)
     
     for k in B:
-        total_mem += sys.getsizeof(k)
-        total_mem += sys.getsizeof(B[k])
+        B_mem += sys.getsizeof(k)
+        B_mem += sys.getsizeof(B[k])
         
-    total_mem += sys.getsizeof(p)
+    p_mem += sys.getsizeof(p)
     
     for l in p:
-        total_mem += sys.getsizeof(l)
+        p_mem += sys.getsizeof(l)
         
         for k in l:
-            total_mem += sys.getsizeof(k)
-            total_mem += sys.getsizeof(l[k])
-            
-    return total_mem
+            p_mem += sys.getsizeof(k)
+            p_mem += sys.getsizeof(l[k])
+        
+    d_mem += sys.getsizeof(d)    
+    
+    for u in d:
+        d_mem += sys.getsizeof(u)
+        
+        for p in d[u]:
+            d_mem += sys.getsizeof(p[0])
+        
+    return (delta_mem, B_mem, p_mem, d_mem)
 
 def is_planar(G):
     
@@ -808,7 +828,7 @@ while k < 17:
     
    
     
-    d = get_d_new(G, k, delta, p)
+    d = get_d(G, k, delta, p)
     time_use_with_d.append(time.time() - time_start)
     
     #delta, B, p = load_data()
@@ -816,7 +836,7 @@ while k < 17:
     #save_data(delta, B, p)
     delta = dict(delta)
          
-    mem_use.append(get_mem_usage(delta, B, p))
+    mem_use.append(get_mem_usage(delta, B, p, d))
     
     
     appx_factors_k = []
@@ -829,7 +849,7 @@ while k < 17:
     
     
     
-    for _ in tqdm(range(5000)):
+    for _ in tqdm(range(50000)):
         u, v = sample(G.get_nodes(), 2)
     
         sample_pairs.append((u,v))
@@ -840,7 +860,7 @@ while k < 17:
     start = time.time()    
     
     for u, v in sample_pairs:
-        approx = bquery(B, delta, p, k, u, v, 0, k-1)
+        approx = bquery_new(B, delta, p, k, u, v, 0, k-1)
         appx_factors_k.append(approx/sample_pair_dists[(u,v)])
         
     end = time.time()
@@ -849,7 +869,7 @@ while k < 17:
     start = time.time()
     
     for u, v in sample_pairs:
-        approx = bquery_new(B, delta, p, k, u, v, 0, k-1)
+        approx = bquery_new(B, delta, p, k, v, u, 0, k-1)
         appx_factors_new_k.append(approx/sample_pair_dists[(u,v)])
         
     end = time.time()
@@ -868,22 +888,22 @@ while k < 17:
     medianprops = dict(color=(0.77, 0, 0.05))
     meanlineprops = dict(linestyle='-', color=(0.12, 0.24, 1))
     
-    plt.boxplot(appx_factors_k, flierprops=flierprops, showfliers=False, medianprops=medianprops, meanprops=meanlineprops, showmeans=True, meanline=True)
-    plt.title(f'Fast query with additional preprocessing, k={k}')
-    plt.savefig(f'Box, Fast query with additional preprocessing.png', bbox_inches='tight')
+    plt.boxplot(appx_factors_k, flierprops=flierprops, medianprops=medianprops, meanprops=meanlineprops, showmeans=True, meanline=True)
+    plt.title(f'Fast query with additional preprocessing with outliers, k={k}')
+    plt.savefig(f'Box, Fast query with additional preprocessing with outliers, k={k}.png', bbox_inches='tight')
     plt.show()
     plt.hist(appx_factors_k, bins=get_number_of_bins(appx_factors_k), label = 'Approximation Factors', color=(0.77, 0, 0.05))
     mn, mx = plt.xlim()
     plt.xlim(mn, mx)
     plt.legend(loc = 'upper right')
     plt.xlabel('Approximation Factors')
-    plt.title(f'Fast query with additional preprocessing')
-    plt.savefig(f'Hist, Fast query with additional preprocessing.png', bbox_inches='tight')
+    plt.title(f'Fast query with additional preprocessing, k={k}')
+    plt.savefig(f'Hist, Fast query with additional preprocessing, k={k}.png', bbox_inches='tight')
     plt.show()
     
-    plt.boxplot(appx_factors_new_k, flierprops=flierprops, showfliers=False, medianprops=medianprops, meanprops=meanlineprops, showmeans=True, meanline=True)
-    plt.title(f'Fast query without additional preprocessing, k={k}')
-    plt.savefig(f'Box, Fast query without additional preprocessing, k={k}.png', bbox_inches='tight')
+    plt.boxplot(appx_factors_new_k, flierprops=flierprops, medianprops=medianprops, meanprops=meanlineprops, showmeans=True, meanline=True)
+    plt.title(f'Fast query without additional preprocessing with outliers, k={k}')
+    plt.savefig(f'Box, Fast query without additional preprocessing with outliers, k={k}.png', bbox_inches='tight')
     plt.show()
     plt.hist(appx_factors_new_k, bins=get_number_of_bins(appx_factors_new_k), label = 'Approximation Factors', color=(0.77, 0, 0.05))
     mn, mx = plt.xlim()
