@@ -1,8 +1,12 @@
 import math
+import time
 import numpy as np
 import heapq as heap
 from collections import defaultdict
 from random import sample, random
+from queue import PriorityQueue
+from tqdm import tqdm
+
 
 
 class Node:
@@ -56,7 +60,8 @@ class Graph:
 
 class Oracle:
     
-    def __init__(self):
+    def __init__(self, k):
+        self.k = k
         self.B = None
         self.p = None
         self.delta = None
@@ -192,6 +197,8 @@ class Oracle:
             D_v = dict()
             I_v = dict()
             
+            I_v[0] = 0
+            
             D_v[2] = self.delta[self.p[2][v], v] - self.delta[self.p[0][v], v]
             I_v[2] = 2
             
@@ -298,15 +305,14 @@ class Oracle:
             
     def init_MN_oracle(self, G, k):
         
-        self.simpleOracle = Oracle()
-        
         k_MN = (128*k) // 2
+        
+        self.simpleOracle = Oracle(k_MN)
         self.simpleOracle.init_simple_oracle(G, k_MN)
         
-    def simple_query(self, u, v):
+    def simple_query(self, u, v, i = 0):
         
         w = u
-        i = 0
         
         while w not in self.B[v]:
             
@@ -315,7 +321,113 @@ class Oracle:
             w = self.p[i][u]
             
         return self.delta[(w,u)] + self.delta[(w, v)] 
+    
+    def query(self, u, v):
+        
+        deltaMN = self.simpleOracle.simple_query(u, v)
+        
+        start = time.start()
+        
+        deltaMN_pow = rnd_pow(deltaMN)//512
+        i1, i2 = None, None
+        
+        i1_u, i2_u = None, None
+        
+        i1_v, i2_v = None, None
+        
+        d_max, d_max_u, d_max_v = None, None, None
+        
+        while deltaMN_pow <= 4*rnd_pow(deltaMN):
             
+            if deltaMN_pow in self.evenDown[u]:
+                d_max_u = deltaMN_pow
+                
+                if (not self.is_terminal(self.I[u][self.evenDown[u][deltaMN_pow]]-2, u, v)) and self.is_terminal(self.I[u][self.evenUp[u][deltaMN_pow]]-2, u, v):
+                    i1_u = self.evenDown[u][deltaMN_pow]
+                    i2_u = self.evenUp[u][deltaMN_pow]
+                    
+            if deltaMN_pow in self.evenDown[v]:
+                d_max_v = deltaMN_pow
+            
+                if (not self.is_terminal(self.I[v][self.evenDown[v][deltaMN_pow]]-2, u, v)) and self.is_terminal(self.I[v][self.evenUp[v][deltaMN_pow]]-2, u, v):
+                    i1_v = self.evenDown[v][deltaMN_pow]
+                    i2_v = self.evenUp[v][deltaMN_pow]
+                
+            deltaMN_pow *= 2
+                    
+        if d_max_u == None and d_max_v == None:
+            return rnd_pow(deltaMN)//256
+
+        if d_max_u == None:
+            u, v = v, u
+            i1, i2 = i1_v, i2_v
+            d_max = d_max_v
+        else:
+            i1, i2 = i1_u, i2_u
+            d_max = d_max_u
+            
+        
+        i_max = self.evenUp[u][d_max] + 2
+        
+        if i_max >= k:
+            
+            if k-1 % 2 == 0:
+                i_max = k-1
+            else:
+                i_max = k-2
+                
+        
+        if not i1 == None:
+            return self.query_legit(u, v, i1, i2)
+        elif not self.is_terminal(self.I[u][i_max]-2, u, v):
+            if i_max >= k-2:
+                return self.simple_query(u, v, i_max)
+            else:
+                return deltaMN
+        else:
+            deltaMN_pow = rnd_pow(deltaMN)//512
+            
+            i_min = float('inf')
+            
+            while deltaMN_pow <= 4*rnd_pow(deltaMN):
+               
+                if deltaMN_pow in self.evenDown[u] and self.I[u][self.evenDown[u][deltaMN_pow]] - 2 < i_min and self.is_terminal(self.I[u][self.evenDown[u][deltaMN_pow]] - 2, u, v):
+                    i_min = self.I[u][self.evenDown[u][deltaMN_pow]] - 2
+               
+                deltaMN_pow *= 2
+                
+            if self.I[u][i_max]-2 < i_min and self.is_terminal(self.I[u][i_max]-2, u, v):
+                i_min = self.I[u][i_max]-2
+                
+            return self.simple_query(u, v, i_min)
+            
+            
+    def query_legit(self, u, v, i1, i2):
+        y1 = self.I[u][self.x1[u][i1]]
+        y2 = self.I[u][self.x2[u][i1]]
+        y3 = self.I[u][self.x3[u][i1]]
+        y4 = self.I[u][i2]
+                
+        if self.is_terminal(y1 - 2, u, v):
+            return self.simple_query(u, v, y1-2)
+        if self.is_terminal(y2 - 2, u, v):
+            return self.simple_query(u, v, y2-2)
+        if self.is_terminal(y3 - 2, u, v):
+            return self.simple_query(u, v, y3-2)
+        if self.x3[u][i1] > self.k - 2:
+            return self.simple_query(u, v, self.x3[u][i1])
+        return self.simple_query(u, v, y4-2)
+        
+        
+    def is_terminal(self, i, u, v):
+        if i < 0:
+            return False
+        if i == self.k-1:
+            return True
+        if self.p[i][u] in self.B[v] or self.p[i+1][v] in self.B[u]:
+            return True
+        return False
+        
     
 def parse(filename='input.txt'):
     f = open(filename, 'r')
@@ -340,13 +452,63 @@ def rnd_pow(x):
         return 0
     return 2**(math.ceil(math.log2(x))) 
         
+def get_min_dist(graph, node):
+    dists = dict()
+    
+    for g in graph.nodes:
+        dists[g] = float('inf')
+        
+    dists[node] = 0
+        
+    queue = PriorityQueue()
+    
+    queue.put((0, node))
+    
+    while not queue.empty():
+        
+        cur_dist, cur_node = queue.get()
+        
+        if cur_dist > dists[cur_node]:
+            continue
+        
+        for neighbor in graph.get_node(cur_node).edges:
+            cost = graph.get_node(cur_node).edges[neighbor]
+            
+            dist = cur_dist + cost
+            
+            if dist < dists[neighbor.get_id()]:
+                dists[neighbor.get_id()] = dist
+                queue.put((dist, neighbor.get_id()))
+        
+        
+    return dists
+
 G = parse("input_roads.txt")
 k = 16
-O = Oracle()
+O = Oracle(k)
+print('Oracle Initialised')
 O.init_simple_oracle(G, k)
+print('B, p, and delta Initialised')
 O.init_D_and_I(G)
+print('D and I Initialised')
 O.init_evens(G, k)
-O.init_x(G, k)        
+print('evenDown and evenUp Initialised')
+O.init_x(G, k)
+print('x1, x2 and x3 Initialised')
 O.init_MN_oracle(G, k)
 
-print(O.simple_query('0', '1'))
+sample_pairs = []
+sample_pair_dists = dict()
+appx_factors = dict()
+
+for _ in tqdm(range(1000)):
+    u, v = sample(G.get_nodes(), 2)
+    
+    sample_pairs.append((u,v))
+    
+    dists = get_min_dist(G, u)    
+    sample_pair_dists[(u,v)] = dists[v]
+
+for u, v in tqdm(sample_pairs):
+    approx = O.query(u,v)
+    appx_factors[(u,v)] = approx/sample_pair_dists[(u,v)]
