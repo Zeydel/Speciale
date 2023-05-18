@@ -15,10 +15,6 @@ from itertools import combinations
 from tqdm import tqdm
 import networkx as nx
 
-
-
-
-
 class Node:
     
     def __init__(self, node_id):
@@ -750,36 +746,33 @@ def plot_mem_time_use(mem_uses, time_uses):
     
 
 def get_mem_usage(delta, B, p, d):
-    total_mem = 0
-    
-    delta_mem = 0
-    B_mem = 0
-    p_mem = 0
-    d_mem = 0
-    
-    delta_mem += sys.getsizeof(delta)
-    
+    B_mem = sys.getsizeof(B)
+        
+    for k in B:
+        B_mem += sys.getsizeof(k)
+        B_mem += sys.getsizeof(B[k])
+            
+        for v in B[k]:
+            B_mem += sys.getsizeof(v)
+                
+    p_mem = sys.getsizeof(p)
+        
+    for k in p:
+        p_mem += sys.getsizeof(k)
+            
+        for v in k:
+            p_mem += sys.getsizeof(v)
+            p_mem += sys.getsizeof(k[v])
+
+    delta_mem = sys.getsizeof(delta)
+        
     for k in delta:
         delta_mem += sys.getsizeof(k[0])
         delta_mem += sys.getsizeof(k[1])
         delta_mem += sys.getsizeof(delta[k])
+
         
-    B_mem += sys.getsizeof(B)
-    
-    for k in B:
-        B_mem += sys.getsizeof(k)
-        B_mem += sys.getsizeof(B[k])
-        
-    p_mem += sys.getsizeof(p)
-    
-    for l in p:
-        p_mem += sys.getsizeof(l)
-        
-        for k in l:
-            p_mem += sys.getsizeof(k)
-            p_mem += sys.getsizeof(l[k])
-        
-    d_mem += sys.getsizeof(d)    
+    d_mem = sys.getsizeof(d)    
     
     for u in d:
         d_mem += sys.getsizeof(u)

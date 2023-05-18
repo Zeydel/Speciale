@@ -12,12 +12,6 @@ from tqdm import tqdm
 from sys import getsizeof, stderr
 from itertools import chain
 from collections import deque
-try:
-    from reprlib import repr
-except ImportError:
-    pass
-
-
 
 class Node:
     
@@ -66,7 +60,13 @@ class Graph:
         
     def get_nodes(self):
         return [k for k in self.nodes]
+
+class TreeNode:
     
+    def __init__(self, sequence):
+        self.sequence = sequence
+        self.j = None
+        self.max_delta = float('-inf')    
 
 class Oracle:
     
@@ -75,14 +75,7 @@ class Oracle:
         self.B = None
         self.p = None
         self.delta = None
-        self.D = None
-        self.I = None
-        self.evenUp = None
-        self.evenDown = None
-        self.simpleOracle = None
-        self.x1 = None
-        self.x2 = None
-        self.x3 = None
+        self.d = None
         
         self.queryTime = 0.0
         self.preprocessingTime = 0.0
@@ -204,273 +197,172 @@ class Oracle:
         
         return (delta, C)
     
-    
-    def init_D_and_I(self, G):
-        
-        start = time.time()
-        
-        self.D = dict()
-        self.I = dict()
-        
-        for v in G.get_nodes():
+    def get_d(self):
+        self.d = dict()
+
+        for u in G.get_nodes():
+            I = [i for i in range(k-2) if i % 2 == 0]
+            T = self.build_T(I)
+            T = self.enrich_T(T)
             
-            D_v = dict()
-            I_v = dict()
+            self.d[u] = dict()    
             
-            I_v[0] = 0
+            nodes = set()
+            nodes.add(1)
             
-            D_v[2] = self.delta[self.p[2][v], v] - self.delta[self.p[0][v], v]
-            I_v[2] = 2
-            
-            for j in range(4, k, 2):
+            while len(nodes) > 0:
+                cur = nodes.pop()
                 
-                d_j = self.delta[self.p[j][v], v] - self.delta[self.p[j-2][v], v]
-                
-                if d_j > D_v[j-2]:
-                    D_v[j] = d_j
-                    I_v[j] = j
-                else:
-                    D_v[j] = D_v[j-2]
-                    I_v[j] = I_v[j-2]
-                    
-            self.D[v] = D_v
-            self.I[v] = I_v
-            
-        self.preprocessingTime += time.time() - start
-            
-    def init_evens(self, G, k):
-        
-        start = time.time()
-        
-        self.evenDown = dict()
-        self.evenUp = dict()
-        
-        for v in G.get_nodes():
-            evenDown_v = dict()
-            evenUp_v = dict()
-            
-            for w in self.B[v]:
-                d_pow = rnd_pow(self.delta[w,v])
-                
-                if d_pow in evenUp_v:
+                if T[cur] == None:
                     continue
                 
-                if k % 2 == 1:
-                    max_k = k-1
-                else:
-                    max_k = k-2
                 
-                for j in range(max_k, -1, -2):
-                    if self.delta[self.p[j][v], v] <= d_pow:
-                      evenUp_v[d_pow] = j
-                      break
-                 
-                for j in range(0, max_k+1, 2):
-                    if rnd_pow(self.delta[self.p[j][v], v]) == rnd_pow(self.delta[self.p[evenUp_v[d_pow]][v], v]):
-                        evenDown_v[d_pow] = j
-                        break
                 
-            self.evenDown[v] = evenDown_v
-            self.evenUp[v] = evenUp_v
+                if cur*2 < len(T):
+                    nodes.add(cur*2)
+                    
+                if (cur*2)+1 < len(T):
+                    nodes.add((cur*2)+1)
+                    
             
-        self.preprocessingTime += time.time() - start
+            for i1 in range(0, k-2, 2):
+                low = i1 + math.floor(math.log2(k)//2)
+                
+                if low % 2 == 1:
+                    low += 1
+                
+                self.d[u][(low, low)] = low
+                
+                for i2 in range(low, k-2, 2):
+                    
+                    if i2 - i1 > (k//2) + 1:
+                        break
+                    
+                    if (i1, i2) not in self.d[u]:
+                        self.d[u][(i1, i2)] = self.get_j(T, i1, i2)
+                    
     
-    def init_x(self, G, k):
-        
-        start = time.time()
-        
-        self.x1 = dict()
-        self.x2 = dict()
-        self.x3 = dict()
-        
-        for v in G.get_nodes():
+    def get_j(self, T, i1, i2):
+
+        S = self.get_s(T, i1, i2)
             
-            x1_v = dict()
-            x2_v = dict()
-            x3_v = dict()
+        j = None
+        max_delta = float('-inf')
+        
+        for s in S:
             
-            x1_v[0] = 0
-            x2_v[0] = 0
-            x3_v[0] = 0
-            
-            for i in range(2, k, 2):
+            if s.max_delta > max_delta:
+                max_delta = s.max_delta
+                j = s.j
                 
-                for j in range(2, k, 2):
-                    
-                    if (j - i) * (self.D[v][j] - self.D[v][i]) > (k - 2 - j)*self.D[v][i]:
-                        x1_v[i] = j
-                        break
-                    
-                if i not in x1_v:
-                    if (k-1) % 2 == 0:
-                        x1_v[i] = k-1
-                    else:
-                        x1_v[i] = k-2
+        return j
+    
+    def build_T(self, I):
+        
+        T = [-1]
+        
+        T.append(TreeNode(I))
+        
+        i = 1
+        
+        while i < len(T):
+            if T[i] == None:
+                i += 1
+                continue
+            if len(T[i].sequence) > 2: 
+                T.append(TreeNode(T[i].sequence[:len(T[i].sequence)//2+1]))
+                T.append(TreeNode(T[i].sequence[len(T[i].sequence)//2:]))
+            else:
+                T.append(None)
+                T.append(None)
                 
-                for j in range(x1_v[i], k, 2):
-                    
-                    if (j - x1_v[i]) * (self.D[v][j] - self.D[v][x1_v[i]]) > (k - 2 - j) * self.D[v][x1_v[i]]:
-                        x2_v[i] = j
-                        break
-                    
-                if i not in x2_v:
-                    if (k-1) % 2 == 0:
-                        x2_v[i] = k-1
-                    else:
-                        x2_v[i] = k-2
-                        
-                for j in range(x2_v[i], k, 2):
-                    
-                    if (j - x2_v[i]) * (self.D[v][j] - self.D[v][x2_v[i]]) > x1_v[i] * (self.D[v][x2_v[i]] - self.D[v][x1_v[i]]):
-                        x3_v[i] = j
-                        break
+            i += 1
+        
+        return T
+    
+    def get_s(self, T, i1, i2):
+    
+        S = set()
+        
+        a, b = 1, 1
+        
+        while len(T[a].sequence) > 2:
+            if i1 >= T[(a*2)+1].sequence[0] and i1 <= T[(a*2)+1].sequence[-1]:
+                a = (a*2) +1
+            else:
+                a = a*2
                 
-                if i not in x3_v:
-                    if (k-1) % 2 == 0:
-                        x3_v[i] = k-1
-                    else:
-                        x3_v[i] = k-2
-                        
-            self.x1[v] = x1_v
-            self.x2[v] = x2_v
-            self.x3[v] = x3_v
+        while len(T[b].sequence) > 2:
+            if i2 >= T[b*2].sequence[0] and i2 <= T[b*2].sequence[-1]:
+                b = b*2
+            else:
+                b = (b*2)+1
+        
+        while self.get_depth(a) > self.get_depth(b):
+            if a % 2 == 1:
+                S.add(T[a])
+                a += 1
+            a = a//2
             
-        self.preprocessingTime += time.time() - start
-            
-    def init_MN_oracle(self, G, k):
+        while self.get_depth(b) > self.get_depth(a):
+            if b % 2 == 0:
+                S.add(T[b])
+                b -= 1
+            b = b//2
         
-        start = time.time()
-        
-        k_MN = (128*k) // 2
-        
-        self.simpleOracle = Oracle(k_MN)
-        self.simpleOracle.init_simple_oracle(G, k_MN)
-        
-        self.preprocessingTime += time.time() - start
-        
-    def simple_query(self, u, v, i = 0):
-        w = self.p[i][u]
+        while a <= b:
+            if a % 2 == 1:
+                S.add(T[a])
+                a += 1
+            if b % 2 == 0:
+                S.add(T[b])
+                b -= 1
                 
-        i1 = i
+            a = a//2
+            b = b//2
+            
+        return S
+    
+    def get_depth(idx):    
+        return math.floor(math.log2(idx))
+    
+    def enrich_T(self, T):
+    
+        for i in range(len(T)-1, 0, -1):
+            
+            if T[i] == None:
+                continue
+            
+            if len(T[i].sequence) == 2:
+                
+                for j in T[i].sequence:
+                    
+                    if self.delta[(self.p[j+2][u], u)] - self.delta[(self.p[j][u], u)] > T[i].max_delta:
+                        T[i].max_delta = self.delta[(self.p[j+2][u], u)] - self.delta[(self.p[j][u], u)]
+                        T[i].j = j
+                continue
+        
+            if T[i*2].max_delta > T[(i*2)+1].max_delta:
+                T[i].max_delta = T[i*2].max_delta
+                T[i].j = T[i*2].j
+            else:
+                T[i].max_delta = T[(i*2)+1].max_delta
+                T[i].j = T[(i*2)+1].j
+                
+        return T
+            
+    def query(self, u, v):
+        
+        w = u
+        i = 0
         
         while w not in self.B[v]:
             
             i += 1
             u, v = v, u
             w = self.p[i][u]
-            
-        if i - i1 > 1 and self.evenDown is not None:
-            raise Exception("To long time spent in loop")
-            
+                        
         return self.delta[(w,u)] + self.delta[(w, v)] 
-    
-    def query(self, u, v):
-        
-        start = time.time()
-        
-        deltaMN = self.simpleOracle.simple_query(u, v)
-        
-        deltaMN_time = time.time() - start
-        
-        deltaMN_pow = rnd_pow(deltaMN)//512
-        i1, i2 = None, None
-        
-        i1_u, i2_u = None, None
-        
-        i1_v, i2_v = None, None
-        
-        d_max, d_max_u, d_max_v = None, None, None
-        
-        while deltaMN_pow <= 4*rnd_pow(deltaMN):
-            
-            if deltaMN_pow in self.evenDown[u]:
-                d_max_u = deltaMN_pow
-                
-                if (not self.is_terminal(self.I[u][self.evenDown[u][deltaMN_pow]]-2, u, v)) and self.is_terminal(self.I[u][self.evenUp[u][deltaMN_pow]]-2, u, v):
-                    i1_u = self.evenDown[u][deltaMN_pow]
-                    i2_u = self.evenUp[u][deltaMN_pow]
-                    
-            if deltaMN_pow in self.evenDown[v]:
-                d_max_v = deltaMN_pow
-            
-                if (not self.is_terminal(self.I[v][self.evenDown[v][deltaMN_pow]]-2, u, v)) and self.is_terminal(self.I[v][self.evenUp[v][deltaMN_pow]]-2, u, v):
-                    i1_v = self.evenDown[v][deltaMN_pow]
-                    i2_v = self.evenUp[v][deltaMN_pow]
-                
-            deltaMN_pow *= 2
-                    
-        if d_max_u == None and d_max_v == None:
-            return (rnd_pow(deltaMN)//256, deltaMN_time)
-
-        if d_max_u == None:
-            u, v = v, u
-            i1, i2 = i1_v, i2_v
-            d_max = d_max_v
-        else:
-            i1, i2 = i1_u, i2_u
-            d_max = d_max_u
-            
-        
-        i_max = self.evenUp[u][d_max] + 2
-        
-        if i_max >= k:
-            
-            if (k-1) % 2 == 0:
-                i_max = k-1
-            else:
-                i_max = k-2
-                
-        
-        if not i1 == None:
-            return (self.query_legit(u, v, i1, i2), deltaMN_time)
-        elif not self.is_terminal(self.I[u][i_max]-2, u, v):
-            if i_max >= k-2:
-                return (self.simple_query(u, v, i_max), deltaMN_time)
-            else:
-                return (deltaMN, deltaMN_time)
-        else:
-            deltaMN_pow = rnd_pow(deltaMN)//512
-            
-            i_min = float('inf')
-            
-            while deltaMN_pow <= 4*rnd_pow(deltaMN):
-               
-                if deltaMN_pow in self.evenDown[u] and self.I[u][self.evenDown[u][deltaMN_pow]] - 2 < i_min and self.is_terminal(self.I[u][self.evenDown[u][deltaMN_pow]] - 2, u, v):
-                    i_min = self.I[u][self.evenDown[u][deltaMN_pow]] - 2
-               
-                deltaMN_pow *= 2
-                
-            if self.I[u][i_max]-2 < i_min and self.is_terminal(self.I[u][i_max]-2, u, v):
-                i_min = self.I[u][i_max]-2
-                
-            return (self.simple_query(u, v, i_min), deltaMN_time)
-            
-            
-    def query_legit(self, u, v, i1, i2):
-        y1 = self.I[u][self.x1[u][i1]]
-        y2 = self.I[u][self.x2[u][i1]]
-        y3 = self.I[u][self.x3[u][i1]]
-        y4 = self.I[u][i2]
-                
-        if self.is_terminal(y1 - 2, u, v):
-            return self.simple_query(u, v, y1-2)
-        if self.is_terminal(y2 - 2, u, v):
-            return self.simple_query(u, v, y2-2)
-        if self.is_terminal(y3 - 2, u, v):
-            return self.simple_query(u, v, y3-2)
-        if self.x3[u][i1] > self.k - 2:
-            return self.simple_query(u, v, self.x3[u][i1])
-        return self.simple_query(u, v, y4-2)
-        
-        
-    def is_terminal(self, i, u, v):
-        if i < 0:
-            return False
-        if i == self.k-1:
-            return True
-        if self.p[i][u] in self.B[v] or self.p[i+1][v] in self.B[u]:
-            return True
-        return False
     
     def get_memory_usage(self):
         
@@ -498,85 +390,8 @@ class Oracle:
             delta_mem += sys.getsizeof(k[0])
             delta_mem += sys.getsizeof(k[1])
             delta_mem += sys.getsizeof(self.delta[k])
-
-        I_mem = sys.getsizeof(self.I)
-
-        if self.I is not None:
-            for k in self.I:
-                I_mem += sys.getsizeof(k)
-                I_mem += sys.getsizeof(self.I[k])
-                    
-                for v in self.I[k]:
-                    I_mem += sys.getsizeof(v)
-                    I_mem += sys.getsizeof(self.I[k][v])
         
-        D_mem = sys.getsizeof(self.D)
-        
-        if self.D is not None:
-            for k in self.D:
-                D_mem += sys.getsizeof(k)
-                D_mem += sys.getsizeof(self.D[k])
-                
-                for v in self.D[k]:
-                    D_mem += sys.getsizeof(v)
-                    D_mem += sys.getsizeof(self.D[k][v])
-
-        x_mem = sys.getsizeof(self.x1)
-        x_mem += sys.getsizeof(self.x2)
-        x_mem += sys.getsizeof(self.x3)
-        
-        if self.x1 is not None:
-            for k in self.x1:
-                x_mem += sys.getsizeof(k)
-                x_mem += sys.getsizeof(self.x1[k])
-                
-                for v in self.x1[k]:
-                    x_mem += sys.getsizeof(v)
-                    x_mem += sys.getsizeof(self.x1[k][v])
-            
-            for k in self.x2:
-                x_mem += sys.getsizeof(k)
-                x_mem += sys.getsizeof(self.x2[k])
-                
-                for v in self.x2[k]:
-                    x_mem += sys.getsizeof(v)
-                    x_mem += sys.getsizeof(self.x2[k][v])
-            
-            for k in self.x3:
-                x_mem += sys.getsizeof(k)
-                x_mem += sys.getsizeof(self.x3[k])
-                
-                for v in self.x3[k]:
-                    x_mem += sys.getsizeof(v)
-                    x_mem += sys.getsizeof(self.x3[k][v])
-            
-
-        even_mem = sys.getsizeof(self.evenUp)
-        even_mem += sys.getsizeof(self.evenDown)
-        
-        if self.evenDown is not None:
-            for k in self.evenDown:
-                x_mem += sys.getsizeof(k)
-                x_mem += sys.getsizeof(self.evenDown[k])
-                
-                for v in self.evenDown[k]:
-                    x_mem += sys.getsizeof(v)
-                    x_mem += sys.getsizeof(self.evenDown[k][v])
-        
-            for k in self.evenUp:
-                x_mem += sys.getsizeof(k)
-                x_mem += sys.getsizeof(self.evenUp[k])
-                
-                for v in self.evenUp[k]:
-                    x_mem += sys.getsizeof(v)
-                    x_mem += sys.getsizeof(self.evenUp[k][v])
-        
-        simple_mem = sys.getsizeof(self.simpleOracle)
-        
-        if self.simpleOracle is not None:
-            simple_mem = sum(self.simpleOracle.get_memory_usage())
-        
-        return (B_mem, p_mem, delta_mem, I_mem, D_mem, x_mem, even_mem, simple_mem)
+        return (B_mem, p_mem, delta_mem)
         
     
 def parse(filename='input.txt'):
@@ -597,11 +412,6 @@ def parse(filename='input.txt'):
     
     return G
 
-def rnd_pow(x):
-    if x == 0:
-        return 0
-    return 2**(math.ceil(math.log2(x))) 
-        
 def get_min_dist(graph, node):
     dists = dict()
     
