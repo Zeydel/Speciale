@@ -348,10 +348,9 @@ class Oracle:
         
         self.preprocessingTime += time.time() - start
         
-    def simple_query(self, u, v):
-        
-        w = u
-        i = 0
+    def simple_query(self, u, v, i = 0):
+        w = self.p[i][u]
+                
         
         while w not in self.B[v]:
             
@@ -376,7 +375,6 @@ class Oracle:
             raise Exception("To long time spent in loop")
             
         return self.delta[(w,u)] + self.delta[(w, v)] 
-
     
     def query(self, u, v):
         
@@ -395,8 +393,6 @@ class Oracle:
         
         d_max, d_max_u, d_max_v = None, None, None
         
-        test = 0
-        
         while deltaMN_pow <= 4*rnd_pow(deltaMN):
             
             if deltaMN_pow in self.evenDown[u]:
@@ -414,11 +410,7 @@ class Oracle:
                     i2_v = self.evenUp[v][deltaMN_pow]
                 
             deltaMN_pow *= 2
-            
-            test += 1
-            
-        print(test)
-            
+                    
         if d_max_u == None and d_max_v == None:
             return (rnd_pow(deltaMN)//256, deltaMN_time)
 
@@ -679,7 +671,7 @@ def plot_mem_time_use(mem_uses, time_uses):
 #     
 # =============================================================================
     for i, time_use in enumerate(time_uses):
-        plt.plot(range(16,93), time_use, c=colors[i])    
+        plt.plot(range(3,76), time_use, c=colors[i])    
     plt.xlabel("k")
     plt.ylabel("Seconds")
     plt.title("Time usage of the preprocessing algorithm")
@@ -768,7 +760,7 @@ mem_uses = []
 query_time_uses = []
 preprocessing_time_uses = []
 
-for k in range(25, 76):
+for k in range(75, 76):
     print(k)
     O = Oracle(k)
     print('Oracle Initialised')
@@ -811,7 +803,5 @@ for k in range(25, 76):
  
     query_time_uses.append(O.queryTime)
     print(O.queryTime)
-        
-        
-    query_time_uses.append(O.queryTime)
-    print(O.queryTime)
+    
+    del O
