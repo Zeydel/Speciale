@@ -705,7 +705,7 @@ def plot_mem_time_use(mem_uses, time_uses):
 # =============================================================================
     
     for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(16,101), [None if m == None else sum(m) for m in mem_use], c=colors[i])
+        plt.plot(range(3,76), [None if m == None else sum(m) for m in mem_use], c=colors[i])
     plt.ylim(0, 1000000000)
     plt.xlabel("k")
     plt.ylabel("bytes")
@@ -713,7 +713,7 @@ def plot_mem_time_use(mem_uses, time_uses):
     plt.show()
     
     for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(16,101), [None if m == None else m[0] for m in mem_use], c=colors[i])
+        plt.plot(range(3,76), [None if m == None else m[0] for m in mem_use], c=colors[i])
     plt.ylim(0, 1000000000)
     plt.xlabel("k")
     plt.ylabel("bytes")
@@ -721,7 +721,7 @@ def plot_mem_time_use(mem_uses, time_uses):
     plt.show()
     
     for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(16,101), [None if m == None else m[1] for m in mem_use], c=colors[i])
+        plt.plot(range(3,76), [None if m == None else m[1] for m in mem_use], c=colors[i])
     plt.ylim(0, 1000000000)
     plt.xlabel("k")
     plt.ylabel("bytes")
@@ -729,7 +729,7 @@ def plot_mem_time_use(mem_uses, time_uses):
     plt.show()
     
     for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(16,101), [None if m == None else m[2] for m in mem_use], c=colors[i])
+        plt.plot(range(3,76), [None if m == None else m[2] for m in mem_use], c=colors[i])
     plt.ylim(0, 1000000000)
     plt.xlabel("k")
     plt.ylabel("bytes")
@@ -737,7 +737,7 @@ def plot_mem_time_use(mem_uses, time_uses):
     plt.show()
     
     for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(16,101), [None if m == None else m[3] for m in mem_use], c=colors[i])
+        plt.plot(range(3,76), [None if m == None else m[3] for m in mem_use], c=colors[i])
     plt.ylim(0, 1000000000)
     plt.xlabel("k")
     plt.ylabel("bytes")

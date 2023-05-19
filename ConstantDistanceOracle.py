@@ -556,26 +556,26 @@ class Oracle:
         
         if self.evenDown is not None:
             for k in self.evenDown:
-                x_mem += sys.getsizeof(k)
-                x_mem += sys.getsizeof(self.evenDown[k])
+                even_mem += sys.getsizeof(k)
+                even_mem += sys.getsizeof(self.evenDown[k])
                 
                 for v in self.evenDown[k]:
-                    x_mem += sys.getsizeof(v)
-                    x_mem += sys.getsizeof(self.evenDown[k][v])
+                    even_mem += sys.getsizeof(v)
+                    even_mem += sys.getsizeof(self.evenDown[k][v])
         
             for k in self.evenUp:
-                x_mem += sys.getsizeof(k)
-                x_mem += sys.getsizeof(self.evenUp[k])
+                even_mem += sys.getsizeof(k)
+                even_mem += sys.getsizeof(self.evenUp[k])
                 
                 for v in self.evenUp[k]:
-                    x_mem += sys.getsizeof(v)
-                    x_mem += sys.getsizeof(self.evenUp[k][v])
+                    even_mem += sys.getsizeof(v)
+                    even_mem += sys.getsizeof(self.evenUp[k][v])
         
         simple_mem = sys.getsizeof(self.simpleOracle)
         
         if self.simpleOracle is not None:
             simple_mem = sum(self.simpleOracle.get_memory_usage())
-        
+            
         return (B_mem, p_mem, delta_mem, I_mem, D_mem, x_mem, even_mem, simple_mem)
         
     
@@ -658,87 +658,87 @@ def plot_mem_time_use(mem_uses, time_uses):
 #     plt.show()
 #     
 # =============================================================================
-    for i, time_use in enumerate(time_uses):
-        plt.plot(range(16,93), time_use, c=colors[i])    
+# =============================================================================
+#     for i, time_use in enumerate(time_uses):
+#         plt.plot(range(16,93), time_use, c=colors[i])    
+#     plt.xlabel("k")
+#     plt.ylabel("Seconds")
+#     plt.title("Time usage of the preprocessing algorithm")
+#     plt.show()
+#     
+# =============================================================================
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(3,76), [None if m == None else sum(m) for m in mem_use], c=colors[i])
+    #plt.ylim(0, 1000000000)
     plt.xlabel("k")
-    plt.ylabel("Seconds")
-    plt.title("Time usage of the preprocessing algorithm")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of the oracle")
     plt.show()
     
-# =============================================================================
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else sum(m) for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of the oracle")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[0] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of B")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[1] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of p")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[2] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of delta")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[3] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of I")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[4] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of D")
-#     plt.show()
-# 
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[5] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of x")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[6] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of even")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[7] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of the Thorup-Zwick Oracle")
-#     plt.show()
-# 
-# =============================================================================
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(3,76), [None if m == None else m[0] for m in mem_use], c=colors[i])
+    #plt.ylim(0, 1000000000)
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of B")
+    plt.show()
+    
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(3,76), [None if m == None else m[1] for m in mem_use], c=colors[i])
+    #plt.ylim(0, 1000000000)
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of p")
+    plt.show()
+    
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(3,76), [None if m == None else m[2] for m in mem_use], c=colors[i])
+    #plt.ylim(0, 1000000000)
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of delta")
+    plt.show()
+    
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(3,76), [None if m == None else m[3] for m in mem_use], c=colors[i])
+    #plt.ylim(0, 1000000000)
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of I")
+    plt.show()
+    
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(3,76), [None if m == None else m[4] for m in mem_use], c=colors[i])
+    #plt.ylim(0, 1000000000)
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of D")
+    plt.show()
+
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(3,76), [None if m == None else m[5] for m in mem_use], c=colors[i])
+    #plt.ylim(0, 1000000000)
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of x")
+    plt.show()
+    
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(3,76), [None if m == None else m[6] for m in mem_use], c=colors[i])
+    #plt.ylim(0, 1000000000)
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of even")
+    plt.show()
+    
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(3,76), [None if m == None else m[7] for m in mem_use], c=colors[i])
+    #plt.ylim(0, 1000000000)
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of the Thorup-Zwick Oracle")
+    plt.show()
+
 
 G = parse("input_roads.txt")
 sample_pair_dists = dict()
