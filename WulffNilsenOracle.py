@@ -5,6 +5,7 @@ import sys
 import time
 import numpy as np
 import heapq as heap
+import pickle
 from collections import defaultdict
 from random import sample, random
 from queue import PriorityQueue
@@ -75,7 +76,7 @@ class Oracle:
         self.B = None
         self.p = None
         self.delta = None
-        self.d = None
+        self.D = None
         
         self.queryTime = 0.0
         self.preprocessingTime = 0.0
@@ -197,55 +198,129 @@ class Oracle:
         
         return (delta, C)
     
-    def get_d(self):
-        self.d = dict()
+    def init_d(self):
+        
+        start = time.time()
+        
+        self.D = dict()
 
         for u in G.get_nodes():
             I = [i for i in range(k-2) if i % 2 == 0]
             T = self.build_T(I)
-            T = self.enrich_T(T)
+            T = self.enrich_T(T, u)
             
-            self.d[u] = dict()    
+            self.D[u] = dict()    
+
+            subsequences = set()
+            subsequences.add((0, self.k-1))
             
-            nodes = set()
-            nodes.add(1)
-            
-            while len(nodes) > 0:
-                cur = nodes.pop()
+            while len(subsequences) > 0:
                 
-                if T[cur] == None:
+                cur = subsequences.pop()
+                
+                if cur[1] - cur[0] <= math.log2(k):
                     continue
                 
-                
-                
-                if cur*2 < len(T):
-                    nodes.add(cur*2)
-                    
-                if (cur*2)+1 < len(T):
-                    nodes.add((cur*2)+1)
-                    
+                i = (cur[0] + cur[1]) // 2
             
-            for i1 in range(0, k-2, 2):
-                low = i1 + math.floor(math.log2(k)//2)
+                if i % 2 == 1:
+                    i += 1
+
+                j = self.get_j(T, cur[0], i-2)
                 
-                if low % 2 == 1:
-                    low += 1
+                self.D[u][(cur[0], i-2)] = j
+                subsequences.add((cur[0], j))
+                subsequences.add((i, cur[1]))
+            
+        self.preprocessingTime += time.time() - start
+          
+        
+    def init_d_dump(self):
+        
+        start = time.time()
+        
+        self.D = dict()
+
+        for u in G.get_nodes():
+            
+            self.D[u] = dict()    
+
+            subsequences = set()
+            subsequences.add((0, self.k-1))
+            
+            while len(subsequences) > 0:
                 
-                self.d[u][(low, low)] = low
+                cur = subsequences.pop()
                 
-                for i2 in range(low, k-2, 2):
+                if cur[1] - cur[0] <= math.log2(k):
+                    continue
+                
+                i = (cur[0] + cur[1]) // 2
+            
+                if i % 2 == 1:
+                    i += 1
+
+                j = -float('inf')
+                for l in range(cur[0], i-3, 2):
+                    if self.delta[(self.p[l+2][u], u)] - self.delta[(self.p[l][u], u)] > j:
+                        j = l
+                                    
+                self.D[u][(cur[0], i-2)] = j
+                subsequences.add((cur[0], j))
+                subsequences.add((i, cur[1]))
+            
+        self.preprocessingTime += time.time() - start
+    
+    def init_d_naive(self):
+        start = time.time()
+        
+        self.D = dict()
+
+    
+        d_max = dict()
+        
+        
+        for u in G.get_nodes():
+        
+            self.D[u] = dict()
+            d_max[u] = dict()
+        
+            for i in range(0, k-4, 2):
+                if self.delta[(self.p[i+2][u], u)] - self.delta[(self.p[i][u], u)] > self.delta[(self.p[i+4][u], u)] - self.delta[(self.p[i+2][u], u)]:
+                    d_max[u][(i, i+2)] = self.delta[(self.p[i+2][u], u)] - self.delta[(self.p[i][u], u)]
+                    self.D[u][(i, i+2)] = i
+                else:
+                    d_max[u][(i, i+2)] = self.delta[(self.p[i+4][u], u)] - self.delta[(self.p[i+2][u], u)]
+                    self.D[u][(i, i+2)] = i+2
+            
+            for l in range(2, (k//2) + 1):
+                for i1 in range(0, k-2-(2*l), 2):
                     
-                    if i2 - i1 > (k//2) + 1:
-                        break
+                    i2 = i1 + (2*l)
                     
-                    if (i1, i2) not in self.d[u]:
-                        self.d[u][(i1, i2)] = self.get_j(T, i1, i2)
                     
+                    i = (i1 + i2) // 2
+                    if i % 2 == 1:
+                        i += 1
+                    
+                    if d_max[u][i1, i] > d_max[u][i, i2]:
+                        d_max[u][i1, i2] = d_max[u][i1, i]
+                        self.D[u][i1,i2] = self.D[u][i1, i]
+                    else:
+                        d_max[u][i1, i2] = d_max[u][i, i2]
+                        self.D[u][i1, i2] = self.D[u][i, i2]
+                
+                        
+        self.preprocessingTime += time.time() - start
+
     
     def get_j(self, T, i1, i2):
 
         S = self.get_s(T, i1, i2)
-            
+        
+        if i1 == i2:
+            return i2
+        
         j = None
         max_delta = float('-inf')
         
@@ -323,10 +398,10 @@ class Oracle:
             
         return S
     
-    def get_depth(idx):    
+    def get_depth(self, idx):    
         return math.floor(math.log2(idx))
     
-    def enrich_T(self, T):
+    def enrich_T(self, T, u):
     
         for i in range(len(T)-1, 0, -1):
             
@@ -350,18 +425,34 @@ class Oracle:
                 T[i].j = T[(i*2)+1].j
                 
         return T
-            
-    def query(self, u, v):
+       
+     
+    def query(self, u, v, i1, i2):
+        if i2 - i1 <= math.log2(k):
+            return self.dist_k(u, v, i1)
+    
+        i = (i1 + i2) // 2
         
-        w = u
-        i = 0
+        if i % 2 == 1:
+            i += 1
         
+        j = self.D[u][(i1, i-2)]
+        
+                
+        if self.p[j][u] not in self.B[v] and self.p[j+1][v] not in self.B[u]:
+            return self.query(u, v, i, i2)
+        else:
+            return self.query(u, v, i1, j)
+     
+    def dist_k(self, u, v, i = 0):
+        w = self.p[i][u]
+                        
         while w not in self.B[v]:
             
             i += 1
             u, v = v, u
             w = self.p[i][u]
-                        
+            
         return self.delta[(w,u)] + self.delta[(w, v)] 
     
     def get_memory_usage(self):
@@ -390,8 +481,19 @@ class Oracle:
             delta_mem += sys.getsizeof(k[0])
             delta_mem += sys.getsizeof(k[1])
             delta_mem += sys.getsizeof(self.delta[k])
+            
+        D_mem = sys.getsizeof(self.D)
         
-        return (B_mem, p_mem, delta_mem)
+        for k in self.D:
+            D_mem += sys.getsizeof(k)
+            D_mem += sys.getsizeof(self.D[k])
+            
+            for v in self.D[k]:
+                D_mem += sys.getsizeof(v[0])
+                D_mem += sys.getsizeof(v[1])
+                D_mem += sys.getsizeof(self.D[k][v])
+        
+        return (B_mem, p_mem, delta_mem, D_mem)
         
     
 def parse(filename='input.txt'):
@@ -469,15 +571,15 @@ def plot_mem_time_use(mem_uses, time_uses):
 #     
 # =============================================================================
     for i, time_use in enumerate(time_uses):
-        plt.plot(range(16,93), time_use, c=colors[i])    
+        plt.plot(range(5,76), time_use, c=colors[i])    
     plt.xlabel("k")
     plt.ylabel("Seconds")
     plt.title("Time usage of the preprocessing algorithm")
     plt.show()
-    
 # =============================================================================
+#     
 #     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else sum(m) for m in mem_use], c=colors[i])
+#         plt.plot(range(5,76), [None if m == None else sum(m) for m in mem_use], c=colors[i])
 #     #plt.ylim(0, 1000000000)
 #     plt.xlabel("k")
 #     plt.ylabel("bytes")
@@ -485,7 +587,7 @@ def plot_mem_time_use(mem_uses, time_uses):
 #     plt.show()
 #     
 #     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[0] for m in mem_use], c=colors[i])
+#         plt.plot(range(5,76), [None if m == None else m[0] for m in mem_use], c=colors[i])
 #     #plt.ylim(0, 1000000000)
 #     plt.xlabel("k")
 #     plt.ylabel("bytes")
@@ -493,7 +595,7 @@ def plot_mem_time_use(mem_uses, time_uses):
 #     plt.show()
 #     
 #     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[1] for m in mem_use], c=colors[i])
+#         plt.plot(range(5,76), [None if m == None else m[1] for m in mem_use], c=colors[i])
 #     #plt.ylim(0, 1000000000)
 #     plt.xlabel("k")
 #     plt.ylabel("bytes")
@@ -501,7 +603,7 @@ def plot_mem_time_use(mem_uses, time_uses):
 #     plt.show()
 #     
 #     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[2] for m in mem_use], c=colors[i])
+#         plt.plot(range(5,76), [None if m == None else m[2] for m in mem_use], c=colors[i])
 #     #plt.ylim(0, 1000000000)
 #     plt.xlabel("k")
 #     plt.ylabel("bytes")
@@ -509,46 +611,15 @@ def plot_mem_time_use(mem_uses, time_uses):
 #     plt.show()
 #     
 #     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[3] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of I")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[4] for m in mem_use], c=colors[i])
+#         plt.plot(range(5,76), [None if m == None else m[3] for m in mem_use], c=colors[i])
 #     #plt.ylim(0, 1000000000)
 #     plt.xlabel("k")
 #     plt.ylabel("bytes")
 #     plt.title("Memory usage of D")
 #     plt.show()
-# 
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[5] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of x")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[6] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of even")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[7] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of the Thorup-Zwick Oracle")
-#     plt.show()
-# 
 # =============================================================================
+    
+
 
 G = parse("input_roads.txt")
 sample_pair_dists = dict()
@@ -558,45 +629,50 @@ mem_uses = []
 query_time_uses = []
 preprocessing_time_uses = []
 
-for k in range(3, 76):
+for k in range(5, 201):
     print(k)
     O = Oracle(k)
     print('Oracle Initialised')
     O.init_simple_oracle(G, k)
     print('B, p, and delta Initialised')
-    O.init_D_and_I(G)
-    print('D and I Initialised')
-    O.init_evens(G, k)
-    print('evenDown and evenUp Initialised')
-    O.init_x(G, k)
-    print('x1, x2 and x3 Initialised')
-    O.init_MN_oracle(G, k)
-    
+    O.init_d_dump()
+    print('D Initialised')    
+
     sample_pairs = []
 
     preprocessing_time_uses.append(O.preprocessingTime)    
     mem_uses.append(O.get_memory_usage())
-
 # =============================================================================
-#     for _ in tqdm(range(1000)):
-#         u, v = sample(G.get_nodes(), 2)
+# 
+#     samples = []
+#     approx_factors_k = []
+#     
+#     nodes = G.get_nodes()
+# 
+#     for _ in range(1000):
 #         
-#         sample_pairs.append((u,v))
+#         u, v = sample(nodes, 2)
 #         
-#         dists = get_min_dist(G, u)    
-#         sample_pair_dists[(u,v)] = dists[v]
+#         samples.append((u,v))
+#         sample_pair_dists[(u,v)] = get_min_dist(G, u)[v]
+# 
+#     start = time.time()
+# 
+#     for u, v in samples:
+# 
+#         approx = O.query(u, v, 0, k-1)
+#         approx_factors_k.append(approx/sample_pair_dists[(u,v)])
+#     
+#     O.queryTime = time.time() - start
+#     appx_factors.append(approx_factors_k)    
+#     query_time_uses.append(O.queryTime)
+#     print(O.queryTime)
 # =============================================================================
+    del O
     
-    for _ in tqdm(range(50000)):
-        
-        u, v = sample(G.get_nodes(), 2)
-        
-        start = time.time()
-        approx, deltaMN_time = O.query(u,v)
-        
-        O.queryTime += time.time() - start
-        O.queryTime -= deltaMN_time
-        
-        
-    query_time_uses.append(O.queryTime)
-    print(O.queryTime)
+with open('Final_data/D_construct/naive_m_long', 'wb') as file:
+    pickle.dump(mem_uses, file)
+    
+with open('Final_data/D_construct/naive_p_long', 'wb') as file:
+    pickle.dump(preprocessing_time_uses, file)
+    

@@ -161,7 +161,7 @@ def preprocess(G, k = 3):
     # A[0] contains every vertex in the graph
     A.append(set(nodes))
     
-    #avg_dists = get_or_create_avg_dists(G)
+    avg_dists = get_or_create_avg_dists(G)
     # A[1] to A[k-1] contains every element of the previous set with
     # probability n^(-1/k)
     for i in range(1, k):
@@ -172,12 +172,12 @@ def preprocess(G, k = 3):
         A.append(set(sample(A[i-1], sample_size)))
         
         # Get the most connected vertices
-        #prev = sorted(A[i-1], key=lambda x: len(G.get_node(x).get_neighbors()))
-        #A.append(set(prev[-sample_size:]))
+        prev = sorted(A[i-1], key=lambda x: len(G.get_node(x).get_neighbors()))
+        A.append(set(prev[-sample_size:]))
         
         # Get the most central vertices
-        #prev = sorted(A[i-1], key=lambda x: avg_dists[x])
-        #A.append(set(prev[:sample_size]))
+        prev = sorted(A[i-1], key=lambda x: avg_dists[x])
+        A.append(set(prev[:sample_size]))
         
         # Find j centers
 # =============================================================================
@@ -680,32 +680,34 @@ def plot_mem_time_use(mem_uses, time_uses):
         ]
     
     #max_len = max([len(m) for m in time_uses])
+    
 # =============================================================================
-#     
 #     for i in range(len(time_uses)):
 #         #mem_uses[i] = mem_uses[i] + ([None] * (max_len-len(mem_uses[i])))
 #         time_uses[i] = time_uses[i] + ([None] * (max_len-len(time_uses[i])))
-#     
-# # =============================================================================
-# #     for i, mem_use in enumerate(mem_uses):
-# #         plt.plot(range(16,500), [None if m == None else m for m in mem_use], c=colors[i])
-# #     plt.ylim(0, 2000000000)
-# #     plt.xlabel("k")
-# #     plt.ylabel("bytes")
-# #     plt.title("Memory usage of the oracle")
-# #     plt.show()
-# #     
-# # =============================================================================
+# =============================================================================
+    
+# =============================================================================
+#     for i, mem_use in enumerate(mem_uses):
+#         plt.plot(range(16,500), [None if m == None else m for m in mem_use], c=colors[i])
+#     plt.ylim(0, 2000000000)
+#     plt.xlabel("k")
+#     plt.ylabel("bytes")
+#     plt.title("Memory usage of the oracle")
+#     plt.show()
+# =============================================================================
+    
+# =============================================================================
 #     for i, time_use in enumerate(time_uses):
-#         plt.plot(range(16,max_len+16), time_use, c=colors[i])    
+#         plt.plot(range(16,76), time_use, c=colors[i])    
 #     plt.xlabel("k")
 #     plt.ylabel("Seconds")
-#     plt.title("Time usage of the preprocessing algorithm")
+#     plt.title("Time usage of the 50000 queries")
 #     plt.show()
 # =============================================================================
     
     for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(3,76), [None if m == None else sum(m) for m in mem_use], c=colors[i])
+        plt.plot(range(16,76), [None if m == None else sum(m) for m in mem_use], c=colors[i])
     plt.ylim(0, 1000000000)
     plt.xlabel("k")
     plt.ylabel("bytes")
@@ -713,7 +715,7 @@ def plot_mem_time_use(mem_uses, time_uses):
     plt.show()
     
     for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(3,76), [None if m == None else m[0] for m in mem_use], c=colors[i])
+        plt.plot(range(16,76), [None if m == None else m[0] for m in mem_use], c=colors[i])
     plt.ylim(0, 1000000000)
     plt.xlabel("k")
     plt.ylabel("bytes")
@@ -721,7 +723,7 @@ def plot_mem_time_use(mem_uses, time_uses):
     plt.show()
     
     for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(3,76), [None if m == None else m[1] for m in mem_use], c=colors[i])
+        plt.plot(range(16,76), [None if m == None else m[1] for m in mem_use], c=colors[i])
     plt.ylim(0, 1000000000)
     plt.xlabel("k")
     plt.ylabel("bytes")
@@ -729,7 +731,7 @@ def plot_mem_time_use(mem_uses, time_uses):
     plt.show()
     
     for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(3,76), [None if m == None else m[2] for m in mem_use], c=colors[i])
+        plt.plot(range(16,76), [None if m == None else m[2] for m in mem_use], c=colors[i])
     plt.ylim(0, 1000000000)
     plt.xlabel("k")
     plt.ylabel("bytes")
@@ -737,11 +739,11 @@ def plot_mem_time_use(mem_uses, time_uses):
     plt.show()
     
     for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(3,76), [None if m == None else m[3] for m in mem_use], c=colors[i])
+        plt.plot(range(16,76), [None if m == None else m[3] for m in mem_use], c=colors[i])
     plt.ylim(0, 1000000000)
     plt.xlabel("k")
     plt.ylabel("bytes")
-    plt.title("Memory usage of d")
+    plt.title("Memory usage of D")
     plt.show()
     
 

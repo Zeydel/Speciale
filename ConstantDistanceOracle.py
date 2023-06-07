@@ -2,7 +2,9 @@ from __future__ import print_function
 import matplotlib.pyplot as plt
 import math
 import sys
+import statistics
 import time
+import pickle
 import numpy as np
 import heapq as heap
 from collections import defaultdict
@@ -86,6 +88,7 @@ class Oracle:
         
         self.queryTime = 0.0
         self.preprocessingTime = 0.0
+        self.preprocessingTimeTZ = 0.0
         
     def init_simple_oracle(self, G, k):
         
@@ -346,7 +349,7 @@ class Oracle:
         self.simpleOracle = Oracle(k_MN)
         self.simpleOracle.init_simple_oracle(G, k_MN)
         
-        self.preprocessingTime += time.time() - start
+        self.preprocessingTimeTZ += time.time() - start
         
     def simple_query(self, u, v):
         
@@ -378,14 +381,8 @@ class Oracle:
         return self.delta[(w,u)] + self.delta[(w, v)] 
 
     
-    def query(self, u, v):
-        
-        start = time.time()
-        
-        deltaMN = self.simpleOracle.simple_query(u, v)
-        
-        deltaMN_time = time.time() - start
-        
+    def query(self, u, v, deltaMN):
+                
         deltaMN_pow = rnd_pow(deltaMN)//512
         i1, i2 = None, None
         
@@ -416,11 +413,9 @@ class Oracle:
             deltaMN_pow *= 2
             
             test += 1
-            
-        print(test)
-            
+              
         if d_max_u == None and d_max_v == None:
-            return (rnd_pow(deltaMN)//256, deltaMN_time)
+            return rnd_pow(deltaMN)//256
 
         if d_max_u == None:
             u, v = v, u
@@ -440,14 +435,14 @@ class Oracle:
             else:
                 i_max = k-2
                 
-        
+ 
         if not i1 == None:
-            return (self.query_legit(u, v, i1, i2), deltaMN_time)
+            return self.query_legit(u, v, i1, i2)
         elif not self.is_terminal(self.I[u][i_max]-2, u, v):
             if i_max >= k-2:
-                return (self.dist_k(u, v, i_max), deltaMN_time)
+                return self.dist_k(u, v, i_max)
             else:
-                return (deltaMN, deltaMN_time)
+                return deltaMN
         else:
             deltaMN_pow = rnd_pow(deltaMN)//512
             
@@ -462,11 +457,12 @@ class Oracle:
                 
             if self.I[u][i_max]-2 < i_min and self.is_terminal(self.I[u][i_max]-2, u, v):
                 i_min = self.I[u][i_max]-2
-                
-            return (self.dist_k(u, v, i_min), deltaMN_time)
+            
+            return self.dist_k(u, v, i_min)
             
             
     def query_legit(self, u, v, i1, i2):
+        
         y1 = self.I[u][self.x1[u][i1]]
         y2 = self.I[u][self.x2[u][i1]]
         y3 = self.I[u][self.x3[u][i1]]
@@ -622,7 +618,7 @@ def rnd_pow(x):
         return 0
     return 2**(math.ceil(math.log2(x))) 
         
-def get_min_dist(graph, node):
+def get_min_dist(graph, node, dist = None):
     dists = dict()
     
     for g in graph.nodes:
@@ -667,8 +663,8 @@ def plot_mem_time_use(mem_uses, time_uses):
     #for i in range(len(time_uses)):
         #mem_uses[i] = mem_uses[i] + ([None] * (max_len-len(mem_uses[i])))
     #    time_uses[i] = time_uses[i] + ([None] * (max_len-len(time_uses[i])))
-    
 # =============================================================================
+#     
 #     for i, mem_use in enumerate(mem_uses):
 #         plt.plot(range(16,500), [None if m == None else m for m in mem_use], c=colors[i])
 #     plt.ylim(0, 2000000000)
@@ -676,15 +672,23 @@ def plot_mem_time_use(mem_uses, time_uses):
 #     plt.ylabel("bytes")
 #     plt.title("Memory usage of the oracle")
 #     plt.show()
-#     
 # =============================================================================
-    for i, time_use in enumerate(time_uses):
-        plt.plot(range(16,93), time_use, c=colors[i])    
+    
+# =============================================================================
+#     for i, time_use in enumerate(time_uses):
+#         plt.plot(range(3,76), time_use, c=colors[i])    
+#     plt.xlabel("k")
+#     plt.ylabel("Seconds")
+#     plt.title("Time usage of 50000 queries")
+#     plt.show()
+# =============================================================================
+    
+    plt.plot(range(3,76), [statistics.median([time_uses[0][i], time_uses[1][i], time_uses[2][i]]) for i in range(len(time_uses[0]))], c=colors[0])    
     plt.xlabel("k")
     plt.ylabel("Seconds")
-    plt.title("Time usage of the preprocessing algorithm")
+    plt.title("Time usage of 50000 queries")
     plt.show()
-    
+
 # =============================================================================
 #     for i, mem_use in enumerate(mem_uses):
 #         plt.plot(range(3,76), [None if m == None else sum(m) for m in mem_use], c=colors[i])
@@ -757,10 +761,18 @@ def plot_mem_time_use(mem_uses, time_uses):
 #     plt.ylabel("bytes")
 #     plt.title("Memory usage of the Thorup-Zwick Oracle")
 #     plt.show()
+# 
+#     for i, mem_use in enumerate(mem_uses):
+#         plt.plot(range(3,76), [None if m == None else sum(m)-m[7] for m in mem_use], c=colors[i])
+#     #plt.ylim(0, 1000000000)
+#     plt.xlabel("k")
+#     plt.ylabel("bytes")
+#     plt.title("Memory usage Chechik Oracle excluding the Thorup-Zwick Oracle")
+#     plt.show()
+# 
 # =============================================================================
 
-
-G = parse("input_roads.txt")
+G = parse("input.txt")
 sample_pair_dists = dict()
 appx_factors = []
 
@@ -768,50 +780,67 @@ mem_uses = []
 query_time_uses = []
 preprocessing_time_uses = []
 
-for k in range(25, 76):
-    print(k)
-    O = Oracle(k)
-    print('Oracle Initialised')
-    O.init_simple_oracle(G, k)
-    print('B, p, and delta Initialised')
-    O.init_D_and_I(G)
-    print('D and I Initialised')
-    O.init_evens(G, k)
-    print('evenDown and evenUp Initialised')
-    O.init_x(G, k)
-    print('x1, x2 and x3 Initialised')
-    O.init_MN_oracle(G, k)
-    
-    sample_pairs = []
+for i in range(1, 4):
 
-    preprocessing_time_uses.append(O.preprocessingTime)    
-    mem_uses.append(O.get_memory_usage())
+    preprocessing_time_uses_i = []
 
+    mem_uses_i = []
+
+    for k in range(3, 26):
+        print(k)
+        O = Oracle(k)
+        print('Oracle Initialised')
+        O.init_simple_oracle(G, k)
+        print('B, p, and delta Initialised')
+        O.init_D_and_I(G)
+        print('D and I Initialised')
+        O.init_evens(G, k)
+        print('evenDown and evenUp Initialised')
+        O.init_x(G, k)
+        print('x1, x2 and x3 Initialised')
+        #O.init_MN_oracle(G, k)
+            
+        sample_pairs = []
+        
+        preprocessing_time_uses_i.append((O.preprocessingTime, O.preprocessingTimeTZ))    
+        mem_uses_i.append(O.get_memory_usage())
+        
+        samples = []
+        approx_factors_k = []
+        
 # =============================================================================
-#     for _ in tqdm(range(1000)):
-#         u, v = sample(G.get_nodes(), 2)
+#         nodes = G.get_nodes()
+#     
+#     
+#         deltaMN = dict()
+#         for _ in range(5000):
+#             
+#             u, v = sample(nodes, 2)
+#             
+#             samples.append((u,v))
+#             sample_pair_dists[(u,v)] = get_min_dist(G, u)[v]
+#     
+#             deltaMN[(u,v)] = O.simpleOracle.simple_query(u, v)
+#     
+#         start = time.time()
+#     
+#         for u, v in samples:
+#     
+#             approx = O.query(u, v, deltaMN[(u,v)])
+#             approx_factors_k.append(approx/sample_pair_dists[(u,v)])
 #         
-#         sample_pairs.append((u,v))
-#         
-#         dists = get_min_dist(G, u)    
-#         sample_pair_dists[(u,v)] = dists[v]
+#         O.queryTime = time.time() - start
+#         appx_factors.append(approx_factors_k)    
+#         query_time_uses.append(O.queryTime)
+#         print(O.queryTime)
 # =============================================================================
-    
-    start = time.time()
+        del O
+    preprocessing_time_uses.append(preprocessing_time_uses_i)
+    mem_uses.append(mem_uses_i)
 
-    for _ in tqdm(range(50000)):
         
-        u, v = sample(G.get_nodes(), 2)
+with open('Final_Data/Small_graph/c_m_s', 'wb') as file:
+    pickle.dump(mem_uses, file)
         
-        approx, deltaMN_time = O.query(u,v)
-        
-        O.queryTime -= deltaMN_time
-        
-    O.queryTime += time.time() - start
- 
-    query_time_uses.append(O.queryTime)
-    print(O.queryTime)
-        
-        
-    query_time_uses.append(O.queryTime)
-    print(O.queryTime)
+with open('Final_Data/Small_graph/c_p_s', 'wb') as file:
+    pickle.dump(preprocessing_time_uses, file)

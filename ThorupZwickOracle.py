@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import math
 import sys
 import time
+import pickle
 import numpy as np
 import heapq as heap
 from collections import defaultdict
@@ -12,6 +13,7 @@ from tqdm import tqdm
 from sys import getsizeof, stderr
 from itertools import chain
 from collections import deque
+import os
 
 class Node:
     
@@ -84,10 +86,49 @@ class Oracle:
         
         A.append(set(nodes))
         
+        avg_dists = get_or_create_avg_dists(G)
+        
+        
+        test = time.time()
         for i in range(1,k):
             
             sample_size = np.random.binomial(len(A[i-1]), len(A[0])**(-1/k))
-            A.append(set(sample(A[i-1], sample_size)))
+            
+            # Random sampling
+            #A.append(set(sample(A[i-1], sample_size)))
+            
+            prev = sorted(A[i-1], key=lambda x: len(G.get_node(x).get_neighbors()))
+            A.append(set(prev[-sample_size:]))
+            
+            #prev = sorted(A[i-1], key=lambda x: avg_dists[x])
+            #A.append(set(prev[:sample_size]))
+            
+# =============================================================================
+#             Ai = set()
+#             cur = sample(A[i-1], 1)[0]
+#             Ai.add(cur)
+#             dists = {key: float('inf') for key in A[i-1]}
+#             while len(Ai) < sample_size:
+#                          
+#                 for key, v in get_min_dist(G, cur).items():
+#                              
+#                     if key in dists: 
+#                         dists[key] = min(dists[key], v)
+#                          
+#                          
+#                 max_dist = float('-inf')
+#                 cur = None
+#                 for key, v in dists.items():
+#                     if v > max_dist:
+#                         max_dist = v
+#                         cur = key
+#                          
+#                 Ai.add(cur)
+#                          
+#             A.append(Ai)
+# =============================================================================
+        print(time.time() - test)
+            
             
         A.append(set())
         
@@ -251,6 +292,20 @@ def parse(filename='input.txt'):
     
     return G
 
+def get_or_create_avg_dists(graph):
+    if os.path.isfile('avg_dists_road.pickle'):
+        return pickle.load(open('avg_dists_road.pickle', 'rb'))
+    else:
+        avg_dists = dict()
+        for n in tqdm(graph.get_nodes()):
+            
+            node_dists = get_min_dist(graph, n)
+            
+            avg_dists[n] = sum([node_dists[v] for v in node_dists])/len(graph.get_nodes())
+        
+        pickle.dump(avg_dists, open('avg_dists_road.pickle', 'wb'))
+        return avg_dists
+
 def get_min_dist(graph, node):
     dists = dict()
     
@@ -307,87 +362,47 @@ def plot_mem_time_use(mem_uses, time_uses):
 #     plt.show()
 #     
 # =============================================================================
-    for i, time_use in enumerate(time_uses):
-        plt.plot(range(16,93), time_use, c=colors[i])    
+# =============================================================================
+#     for i, time_use in enumerate(time_uses):
+#         plt.plot(range(3,76), time_use, c=colors[i])    
+#     plt.xlabel("k")
+#     plt.ylabel("Seconds")
+#     plt.title("Time usage of 50000 queries")
+#     plt.show()
+# =============================================================================
+    
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(3,76), [None if m == None else sum(m) for m in mem_use], c=colors[i])
+    #plt.ylim(0, 1000000000)
     plt.xlabel("k")
-    plt.ylabel("Seconds")
-    plt.title("Time usage of the preprocessing algorithm")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of the oracle")
     plt.show()
     
-# =============================================================================
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else sum(m) for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of the oracle")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[0] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of B")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[1] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of p")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[2] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of delta")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[3] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of I")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[4] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of D")
-#     plt.show()
-# 
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[5] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of x")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[6] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of even")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,94), [None if m == None else m[7] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of the Thorup-Zwick Oracle")
-#     plt.show()
-# 
-# =============================================================================
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(3,76), [None if m == None else m[0] for m in mem_use], c=colors[i])
+    #plt.ylim(0, 1000000000)
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of B")
+    plt.show()
+    
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(3,76), [None if m == None else m[1] for m in mem_use], c=colors[i])
+    #plt.ylim(0, 1000000000)
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of p")
+    plt.show()
+    
+    for i, mem_use in enumerate(mem_uses):
+        plt.plot(range(3,76), [None if m == None else m[2] for m in mem_use], c=colors[i])
+    #plt.ylim(0, 1000000000)
+    plt.xlabel("k")
+    plt.ylabel("bytes")
+    plt.title("Memory usage of delta")
+    plt.show()
+
 
 G = parse("input_roads.txt")
 sample_pair_dists = dict()
@@ -397,19 +412,12 @@ mem_uses = []
 query_time_uses = []
 preprocessing_time_uses = []
 
-for k in range(3, 76):
+for k in range(2, 76):
     print(k)
     O = Oracle(k)
     print('Oracle Initialised')
     O.init_simple_oracle(G, k)
     print('B, p, and delta Initialised')
-    O.init_D_and_I(G)
-    print('D and I Initialised')
-    O.init_evens(G, k)
-    print('evenDown and evenUp Initialised')
-    O.init_x(G, k)
-    print('x1, x2 and x3 Initialised')
-    O.init_MN_oracle(G, k)
     
     sample_pairs = []
 
@@ -417,25 +425,37 @@ for k in range(3, 76):
     mem_uses.append(O.get_memory_usage())
 
 # =============================================================================
-#     for _ in tqdm(range(1000)):
-#         u, v = sample(G.get_nodes(), 2)
+#     samples = []
+#     approx_factors_k = []
+#     
+#     nodes = G.get_nodes()
+# 
+#     for _ in range(1000):
 #         
-#         sample_pairs.append((u,v))
+#         u, v = sample(nodes, 2)
 #         
-#         dists = get_min_dist(G, u)    
-#         sample_pair_dists[(u,v)] = dists[v]
+#         samples.append((u,v))
+#         sample_pair_dists[(u,v)] = get_min_dist(G, u)[v]
+# 
+#     start = time.time()
+# 
+#     for u, v in samples:
+# 
+#         approx = O.query(u, v)
+#         approx_factors_k.append(approx/sample_pair_dists[(u,v)])
+#     
+#     O.queryTime = time.time() - start
+#     appx_factors.append(approx_factors_k)    
+#     query_time_uses.append(O.queryTime)
+#     print(O.queryTime)
 # =============================================================================
+    del O
     
-    for _ in tqdm(range(50000)):
-        
-        u, v = sample(G.get_nodes(), 2)
-        
-        start = time.time()
-        approx, deltaMN_time = O.query(u,v)
-        
-        O.queryTime += time.time() - start
-        O.queryTime -= deltaMN_time
-        
-        
-    query_time_uses.append(O.queryTime)
-    print(O.queryTime)
+with open('Final_data/Sampling_strat/centers_m', 'wb') as file:
+    pickle.dump(mem_uses, file)
+    
+with open('Final_data/Sampling_strat/centers_p', 'wb') as file:
+    pickle.dump(preprocessing_time_uses, file)
+    
+
+    

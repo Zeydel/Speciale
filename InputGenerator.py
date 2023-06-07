@@ -146,7 +146,7 @@ def generatePlanarGraph(num_nodes, size):
     
     last = ''
     
-    for n in range(num_nodes):
+    for n in tqdm(range(num_nodes)):
         
         x = random.randint(0, size)
         y = random.randint(0, size)
@@ -155,7 +155,7 @@ def generatePlanarGraph(num_nodes, size):
         
     tri = Delaunay([node_coordinates[n] for n in node_coordinates])
     
-    for t in tri.simplices:
+    for t in tqdm(tri.simplices):
         
         if int(t[0]) not in nodes:
             nodes[int(t[0])] = set()
@@ -178,7 +178,7 @@ def generatePlanarGraph(num_nodes, size):
         
     f = open("input.txt", "a")    
     
-    for u in nodes:
+    for u in tqdm(nodes):
         string = str(u)
         
         for v in nodes[u]:
@@ -210,9 +210,9 @@ def generateLineGraph(num_nodes):
    
 def generateRoadGraph():
     
-    edges = open("CAL_Edges.cedge").read().split('\n')
+    edges = open("NA_Edges.cedge").read().split('\n')
     
-    f = open("input_roads.txt", "a")
+    f = open("input_roads_NA.txt", "a")
     
     dists = dict()
     nodes = dict()
@@ -245,16 +245,16 @@ def generateRoadGraph():
     return nodes
 
         
-if os.path.exists("input_roads.txt"):
-    os.remove("input_roads.txt")
+if os.path.exists("input.txt"):
+    os.remove("input.txt")
 
 
 #nodes = generateInput(1000, 1000, connectivity=0.05)
 #nodes = generateClusteredGraph(1000, 50000, 1000)
-#nodes = generatePlanarGraph(1000, 1000)
-nodes = generateRoadGraph()
+nodes = generatePlanarGraph(1000, 2000000)
+#nodes = generateRoadGraph()
 
-plt.hist([nodes[n] for n in nodes], label = 'Approximation Factors', color=(0.77, 0, 0.05))
+plt.hist([nodes[n] for n in nodes], label = 'Vertex Degrees', color=(0.77, 0, 0.05))
 mn, mx = plt.xlim()
 plt.xlim(mn, mx)
 plt.legend(loc = 'upper right')

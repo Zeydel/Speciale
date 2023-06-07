@@ -12,6 +12,7 @@ from tqdm import tqdm
 from sys import getsizeof, stderr
 from itertools import chain
 from collections import deque
+from collections import defaultdict
 try:
     from reprlib import repr
 except ImportError:
@@ -246,8 +247,8 @@ class Oracle:
         self.evenUp = dict()
         
         for v in G.get_nodes():
-            evenDown_v = dict()
-            evenUp_v = dict()
+            evenDown_v = defaultdict(lambda: float('inf'))
+            evenUp_v = defaultdict(lambda: float('inf'))
             
             for w in self.B[v]:
                 d_pow = rnd_pow(self.delta[w,v])
@@ -348,9 +349,10 @@ class Oracle:
         
         self.preprocessingTime += time.time() - start
         
-    def simple_query(self, u, v, i = 0):
-        w = self.p[i][u]
-                
+    def simple_query(self, u, v):
+        
+        w = u
+        i = 0
         
         while w not in self.B[v]:
             
@@ -375,14 +377,11 @@ class Oracle:
             raise Exception("To long time spent in loop")
             
         return self.delta[(w,u)] + self.delta[(w, v)] 
+
     
-    def query(self, u, v):
+    def query(self, u, v, deltaMN):
         
         start = time.time()
-        
-        deltaMN = self.simpleOracle.simple_query(u, v)
-        
-        deltaMN_time = time.time() - start
         
         deltaMN_pow = rnd_pow(deltaMN)//512
         i1, i2 = None, None
@@ -393,16 +392,19 @@ class Oracle:
         
         d_max, d_max_u, d_max_v = None, None, None
         
+        test = 0
+  
+        
         while deltaMN_pow <= 4*rnd_pow(deltaMN):
             
-            if deltaMN_pow in self.evenDown[u]:
+            if not self.evenDown[u][deltaMN_pow] == float('inf'):
                 d_max_u = deltaMN_pow
                 
                 if (not self.is_terminal(self.I[u][self.evenDown[u][deltaMN_pow]]-2, u, v)) and self.is_terminal(self.I[u][self.evenUp[u][deltaMN_pow]]-2, u, v):
                     i1_u = self.evenDown[u][deltaMN_pow]
                     i2_u = self.evenUp[u][deltaMN_pow]
                     
-            if deltaMN_pow in self.evenDown[v]:
+            if not self.evenDown[v][deltaMN_pow] == float('inf'):
                 d_max_v = deltaMN_pow
             
                 if (not self.is_terminal(self.I[v][self.evenDown[v][deltaMN_pow]]-2, u, v)) and self.is_terminal(self.I[v][self.evenUp[v][deltaMN_pow]]-2, u, v):
@@ -410,9 +412,12 @@ class Oracle:
                     i2_v = self.evenUp[v][deltaMN_pow]
                 
             deltaMN_pow *= 2
-                    
+            
+            test += 1
+        
+                        
         if d_max_u == None and d_max_v == None:
-            return (rnd_pow(deltaMN)//256, deltaMN_time)
+            return rnd_pow(deltaMN)//256
 
         if d_max_u == None:
             u, v = v, u
@@ -434,12 +439,12 @@ class Oracle:
                 
         
         if not i1 == None:
-            return (self.query_legit(u, v, i1, i2), deltaMN_time)
+            return self.query_legit(u, v, i1, i2)
         elif not self.is_terminal(self.I[u][i_max]-2, u, v):
             if i_max >= k-2:
-                return (self.dist_k(u, v, i_max), deltaMN_time)
+                return self.dist_k(u, v, i_max)
             else:
-                return (deltaMN, deltaMN_time)
+                return deltaMN
         else:
             deltaMN_pow = rnd_pow(deltaMN)//512
             
@@ -447,18 +452,20 @@ class Oracle:
             
             while deltaMN_pow <= 4*rnd_pow(deltaMN):
                
-                if deltaMN_pow in self.evenDown[u] and self.I[u][self.evenDown[u][deltaMN_pow]] - 2 < i_min and self.is_terminal(self.I[u][self.evenDown[u][deltaMN_pow]] - 2, u, v):
+                if (not self.evenDown[u][deltaMN_pow] == float('inf')) and self.I[u][self.evenDown[u][deltaMN_pow]] - 2 < i_min and self.is_terminal(self.I[u][self.evenDown[u][deltaMN_pow]] - 2, u, v):
                     i_min = self.I[u][self.evenDown[u][deltaMN_pow]] - 2
                
                 deltaMN_pow *= 2
                 
             if self.I[u][i_max]-2 < i_min and self.is_terminal(self.I[u][i_max]-2, u, v):
                 i_min = self.I[u][i_max]-2
-                
-            return (self.dist_k(u, v, i_min), deltaMN_time)
+            
+            
+            return self.dist_k(u, v, i_min)
             
             
     def query_legit(self, u, v, i1, i2):
+        
         y1 = self.I[u][self.x1[u][i1]]
         y2 = self.I[u][self.x2[u][i1]]
         y3 = self.I[u][self.x3[u][i1]]
@@ -659,8 +666,8 @@ def plot_mem_time_use(mem_uses, time_uses):
     #for i in range(len(time_uses)):
         #mem_uses[i] = mem_uses[i] + ([None] * (max_len-len(mem_uses[i])))
     #    time_uses[i] = time_uses[i] + ([None] * (max_len-len(time_uses[i])))
-    
 # =============================================================================
+#     
 #     for i, mem_use in enumerate(mem_uses):
 #         plt.plot(range(16,500), [None if m == None else m for m in mem_use], c=colors[i])
 #     plt.ylim(0, 2000000000)
@@ -668,8 +675,8 @@ def plot_mem_time_use(mem_uses, time_uses):
 #     plt.ylabel("bytes")
 #     plt.title("Memory usage of the oracle")
 #     plt.show()
-#     
 # =============================================================================
+    
     for i, time_use in enumerate(time_uses):
         plt.plot(range(3,76), time_use, c=colors[i])    
     plt.xlabel("k")
@@ -760,7 +767,7 @@ mem_uses = []
 query_time_uses = []
 preprocessing_time_uses = []
 
-for k in range(75, 76):
+for k in range(3, 76):
     print(k)
     O = Oracle(k)
     print('Oracle Initialised')
@@ -789,19 +796,26 @@ for k in range(75, 76):
 #         sample_pair_dists[(u,v)] = dists[v]
 # =============================================================================
     
-    start = time.time()
+    samples = []
 
-    for _ in tqdm(range(50000)):
+    deltaMN = dict()    
+    for _ in range(50000):
         
         u, v = sample(G.get_nodes(), 2)
         
-        approx, deltaMN_time = O.query(u,v)
+        samples.append((u,v))
         
-        O.queryTime -= deltaMN_time
+        deltaMN[(u,v)] = O.simpleOracle.simple_query(u, v)
+    
+
+    start = time.time()
+
+    for u, v in samples:
+
+        approx = O.query(u, v, deltaMN[(u,v)])
         
-    O.queryTime += time.time() - start
- 
+    O.queryTime = time.time() - start
+        
     query_time_uses.append(O.queryTime)
     print(O.queryTime)
-    
     del O
