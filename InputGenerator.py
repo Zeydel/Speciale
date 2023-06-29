@@ -251,13 +251,12 @@ if os.path.exists("input.txt"):
 
 #nodes = generateInput(1000, 1000, connectivity=0.05)
 #nodes = generateClusteredGraph(1000, 50000, 1000)
-nodes = generatePlanarGraph(1000, 2000000)
-#nodes = generateRoadGraph()
+#nodes = generatePlanarGraph(1000, 2000000)
+nodes = generateRoadGraph()
 
 plt.hist([nodes[n] for n in nodes], label = 'Vertex Degrees', color=(0.77, 0, 0.05))
 mn, mx = plt.xlim()
 plt.xlim(mn, mx)
-plt.legend(loc = 'upper right')
 plt.xlabel('Vertex Degree')
-plt.title(f'Californian Roads')
+plt.title(f'Vertex Degrees, Californian Roads')
 plt.show()

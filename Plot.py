@@ -221,10 +221,10 @@ def plot_preprocessing_comparison(preprocessing_times):
            medians[i] = ([None] * (max_len - len(m))) + m 
         
     for i, time_use in enumerate(medians):
-        plt.plot(range(3,76), time_use, c=colors[i], label = labels[i])    
+        plt.plot(range(5,76), time_use, c=colors[i])    
     plt.xlabel("k")
     plt.ylabel("Seconds")
-    plt.title("Time usage the preprocessing algorithms")
+    plt.title("Time usage the preprocessing Algorithm")
     plt.legend(loc="best")
     plt.show()
         
@@ -268,7 +268,7 @@ def plot_preprocessing_comparison_exl(preprocessing_times):
         plt.plot(range(3,76), time_use, c=colors[i], label = labels[i])    
     plt.xlabel("k")
     plt.ylabel("Seconds")
-    plt.title("Time usage the preprocessing algorithms")
+    plt.title("Time usage of the preprocessing algorithms")
     plt.legend(loc="best")
     plt.show()
     
@@ -283,9 +283,9 @@ def plot_memory_comparison(memory_uses):
         ]
     
     labels = [
-        'Thorup-Zwick Oracle',
+        #'Thorup-Zwick Oracle',
         'Wulff-Nilsen Oracle',
-        'Chechik Oracle'
+        #'Chechik Oracle'
         ]
     
     medians = []
@@ -305,10 +305,10 @@ def plot_memory_comparison(memory_uses):
            medians[i] = ([None] * (max_len - len(m))) + m 
         
     for i, time_use in enumerate(medians):
-        plt.plot(range(3,76), time_use, c=colors[i], label = labels[i])    
+        plt.plot(range(5,76), time_use, c=colors[i])    
     plt.xlabel("k")
     plt.ylabel("Seconds")
-    plt.title("Memory usage the Oracles")
+    plt.title("Memory usage the Oracle")
     plt.legend(loc="best")
     plt.show()
     
@@ -323,8 +323,8 @@ def plot_memory_comparison_exl(memory_uses):
     
     labels = [
      #   'Thorup-Zwick Oracle',
-     #   'Wulff-Nilsen Oracle',
-        'Chechik Oracle'
+        'Wulff-Nilsen Oracle',
+    #'Chechik Oracle'
         ]
     
     medians = []
@@ -348,7 +348,7 @@ def plot_memory_comparison_exl(memory_uses):
            medians[i] = ([None] * (max_len - len(m))) + m 
         
     for i, time_use in enumerate(medians):
-        plt.plot(range(3,76), time_use, c=colors[i], label = labels[i])    
+        plt.plot(range(5,76), time_use, c=colors[i], label = labels[i])    
     plt.xlabel("k")
     plt.ylabel("Bytes")
     plt.title("Memory usage of the Oracles")

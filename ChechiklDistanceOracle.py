@@ -20,7 +20,7 @@ except ImportError:
     pass
 
 
-
+# Class representing a node in an undirected graph
 class Node:
     
     def __init__(self, node_id):
@@ -42,6 +42,7 @@ class Node:
     def add_edge(self, neighbor, weight):
         self.edges[neighbor] = weight
         
+# Class representing a weighted undirected graph
 class Graph:
     
     def __init__(self):
@@ -69,9 +70,11 @@ class Graph:
     def get_nodes(self):
         return [k for k in self.nodes]
     
-
+# Implementation of the Thorup-Zwick Oracle
 class Oracle:
     
+    
+    # Init the various objects that we need to store
     def __init__(self, k):
         self.k = k
         self.B = None
@@ -86,10 +89,12 @@ class Oracle:
         self.x2 = None
         self.x3 = None
         
+        # Some varaibles to be used for measuring performances
         self.queryTime = 0.0
         self.preprocessingTime = 0.0
         self.preprocessingTimeTZ = 0.0
         
+    # Inialise bunches, witnesses and delta dictionary
     def init_simple_oracle(self, G, k):
         
         start = time.time()
@@ -141,7 +146,7 @@ class Oracle:
         self.delta = dict(self.delta)
         self.preprocessingTime += time.time() - start
             
-            
+    # Function for initialising witnesses for a sampling layer
     def get_p(self, G, A_i):
         
         queue = []
@@ -176,7 +181,7 @@ class Oracle:
                     
         return (delta_Ai_i, p_i)
     
-    
+    # Function for initialising clusters for i-centers
     def get_clusters(self, G, A, C, delta, delta_Ai, i):
         
         queue = []
@@ -207,7 +212,7 @@ class Oracle:
         
         return (delta, C)
     
-    
+    # Function to initialse D and I
     def init_D_and_I(self, G):
         
         start = time.time()
@@ -240,7 +245,8 @@ class Oracle:
             self.I[v] = I_v
             
         self.preprocessingTime += time.time() - start
-            
+        
+    # Function to initialise EvenUp and EvenDown
     def init_evens(self, G, k):
         
         start = time.time()
@@ -278,6 +284,7 @@ class Oracle:
             
         self.preprocessingTime += time.time() - start
     
+    # Function to initialise x1, x2 and x3
     def init_x(self, G, k):
         
         start = time.time()
@@ -339,7 +346,8 @@ class Oracle:
             self.x3[v] = x3_v
             
         self.preprocessingTime += time.time() - start
-            
+     
+    # Function to initialise the emulated Mendel Naor oracle
     def init_MN_oracle(self, G, k):
         
         start = time.time()
@@ -351,6 +359,7 @@ class Oracle:
         
         self.preprocessingTimeTZ += time.time() - start
         
+    # Thorup-Zwick Query
     def simple_query(self, u, v):
         
         w = u
@@ -364,6 +373,7 @@ class Oracle:
                         
         return self.delta[(w,u)] + self.delta[(w, v)] 
     
+    # Torup-Zwick Query with arbitrary starting point
     def dist_k(self, u, v, i = 0):
         w = self.p[i][u]
                 
@@ -380,7 +390,7 @@ class Oracle:
             
         return self.delta[(w,u)] + self.delta[(w, v)] 
 
-    
+    # Query Function
     def query(self, u, v, deltaMN):
                 
         deltaMN_pow = rnd_pow(deltaMN)//512
@@ -460,7 +470,7 @@ class Oracle:
             
             return self.dist_k(u, v, i_min)
             
-            
+    # Query function given legitimate pair        
     def query_legit(self, u, v, i1, i2):
         
         y1 = self.I[u][self.x1[u][i1]]
@@ -479,6 +489,7 @@ class Oracle:
         return self.dist_k(u, v, y4-2)
         
         
+    # Function to depermine wether an index is terminal
     def is_terminal(self, i, u, v):
         if i < 0:
             return False
@@ -487,7 +498,8 @@ class Oracle:
         if self.p[i][u] in self.B[v] or self.p[i+1][v] in self.B[u]:
             return True
         return False
-    
+
+    # Get total memory use
     def get_memory_usage(self):
         
         B_mem = sys.getsizeof(self.B)
@@ -594,7 +606,7 @@ class Oracle:
             
         return (B_mem, p_mem, delta_mem, I_mem, D_mem, x_mem, even_mem, simple_mem)
         
-    
+# Parse the graph into an object
 def parse(filename='input.txt'):
     f = open(filename, 'r')
     text = f.read().strip().split('\n')
@@ -613,11 +625,13 @@ def parse(filename='input.txt'):
     
     return G
 
+# Round a number up to nearest power of two
 def rnd_pow(x):
     if x == 0:
         return 0
     return 2**(math.ceil(math.log2(x))) 
         
+# Djikstra
 def get_min_dist(graph, node, dist = None):
     dists = dict()
     
@@ -648,129 +662,6 @@ def get_min_dist(graph, node, dist = None):
         
         
     return dists
-
-def plot_mem_time_use(mem_uses, time_uses):
-
-    colors = [
-        (0.77, 0, 0.05),
-        (0.12, 0.24, 1),
-        (0.31, 1, 0.34),
-        (1, 0.35, 0.14)
-        ]
-    
-    #max_len = max([len(m) for m in time_uses])
-    
-    #for i in range(len(time_uses)):
-        #mem_uses[i] = mem_uses[i] + ([None] * (max_len-len(mem_uses[i])))
-    #    time_uses[i] = time_uses[i] + ([None] * (max_len-len(time_uses[i])))
-# =============================================================================
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,500), [None if m == None else m for m in mem_use], c=colors[i])
-#     plt.ylim(0, 2000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of the oracle")
-#     plt.show()
-# =============================================================================
-    
-# =============================================================================
-#     for i, time_use in enumerate(time_uses):
-#         plt.plot(range(3,76), time_use, c=colors[i])    
-#     plt.xlabel("k")
-#     plt.ylabel("Seconds")
-#     plt.title("Time usage of 50000 queries")
-#     plt.show()
-# =============================================================================
-    
-    plt.plot(range(3,76), [statistics.median([time_uses[0][i], time_uses[1][i], time_uses[2][i]]) for i in range(len(time_uses[0]))], c=colors[0])    
-    plt.xlabel("k")
-    plt.ylabel("Seconds")
-    plt.title("Time usage of 50000 queries")
-    plt.show()
-
-# =============================================================================
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(3,76), [None if m == None else sum(m) for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of the oracle")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(3,76), [None if m == None else m[0] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of B")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(3,76), [None if m == None else m[1] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of p")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(3,76), [None if m == None else m[2] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of delta")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(3,76), [None if m == None else m[3] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of I")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(3,76), [None if m == None else m[4] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of D")
-#     plt.show()
-# 
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(3,76), [None if m == None else m[5] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of x")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(3,76), [None if m == None else m[6] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of even")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(3,76), [None if m == None else m[7] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of the Thorup-Zwick Oracle")
-#     plt.show()
-# 
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(3,76), [None if m == None else sum(m)-m[7] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage Chechik Oracle excluding the Thorup-Zwick Oracle")
-#     plt.show()
-# 
-# =============================================================================
 
 G = parse("input.txt")
 sample_pair_dists = dict()

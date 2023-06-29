@@ -15,6 +15,7 @@ from itertools import chain
 from collections import deque
 import os
 
+# Class representing a node in an undirected graph
 class Node:
     
     def __init__(self, node_id):
@@ -36,6 +37,7 @@ class Node:
     def add_edge(self, neighbor, weight):
         self.edges[neighbor] = weight
         
+# Class representing a weighted undirected graph
 class Graph:
     
     def __init__(self):
@@ -63,18 +65,21 @@ class Graph:
     def get_nodes(self):
         return [k for k in self.nodes]
     
-
+# Implementation of the Thorup-Zwick Oracle
 class Oracle:
     
+    # Init the various objects that we need to store
     def __init__(self, k):
         self.k = k
         self.B = None
         self.p = None
         self.delta = None
         
+        # Some varaibles to be used for measuring performances
         self.queryTime = 0.0
         self.preprocessingTime = 0.0
         
+    # Inialise bunches, witnesses and delta dictionary
     def init_simple_oracle(self, G, k):
         
         start = time.time()
@@ -88,17 +93,16 @@ class Oracle:
         
         avg_dists = get_or_create_avg_dists(G)
         
-        
-        test = time.time()
+        # perform the sampling
         for i in range(1,k):
             
             sample_size = np.random.binomial(len(A[i-1]), len(A[0])**(-1/k))
             
             # Random sampling
-            #A.append(set(sample(A[i-1], sample_size)))
+            A.append(set(sample(A[i-1], sample_size)))
             
-            prev = sorted(A[i-1], key=lambda x: len(G.get_node(x).get_neighbors()))
-            A.append(set(prev[-sample_size:]))
+            #prev = sorted(A[i-1], key=lambda x: len(G.get_node(x).get_neighbors()))
+            #A.append(set(prev[-sample_size:]))
             
             #prev = sorted(A[i-1], key=lambda x: avg_dists[x])
             #A.append(set(prev[:sample_size]))
@@ -127,27 +131,31 @@ class Oracle:
 #                          
 #             A.append(Ai)
 # =============================================================================
-        print(time.time() - test)
-            
             
         A.append(set())
         
+        # If A[k-1] is empty, try again
         if len(A[k-1]) == 0:
             return self.init_simple_oracle(G, k)
         
+        # Init the constructs
         self.B = {v: set() for v in nodes}
         self.p = [dict() for i in range(k+1)]
         self.delta = defaultdict(lambda: float('inf'))
         
+        # And some temporary ones
         delta_Ai = [dict() for i in range(k+1)]
         C = {v: set() for v in nodes}
         
+        # All vertex has distance 0 to themselves
+        # And distance infinity to the empty set A[k]
         for v in nodes:
             
             self.delta[(v,v)] = 0
             
             delta_Ai[k][v] = float('inf')
         
+        # Compute witnesses and distances from k-1 to 0
         for i in range(k-1, -1, -1):
             
             delta_Ai_i, p_i = self.get_p(G, A[i])
@@ -158,14 +166,18 @@ class Oracle:
             self.delta |= delta_i
             C |= C_i
             
+        # Construct bunches from clusters
         for v in C:
             for w in C[v]:
                 self.B[w].add(v)
                 
+        # Transform the defaultdict to a dict
         self.delta = dict(self.delta)
+        
+        # Save the preprocessing times
         self.preprocessingTime += time.time() - start
             
-            
+    # Function for initialising witnesses for a sampling layer
     def get_p(self, G, A_i):
         
         queue = []
@@ -200,7 +212,7 @@ class Oracle:
                     
         return (delta_Ai_i, p_i)
     
-    
+    # Function for initialising clusters for i-centers
     def get_clusters(self, G, A, C, delta, delta_Ai, i):
         
         queue = []
@@ -231,6 +243,7 @@ class Oracle:
         
         return (delta, C)
     
+    # Query function
     def query(self, u, v):
         
         w = u
@@ -244,6 +257,7 @@ class Oracle:
                         
         return self.delta[(w,u)] + self.delta[(w, v)] 
     
+    # Get total memory use
     def get_memory_usage(self):
         
         B_mem = sys.getsizeof(self.B)
@@ -272,8 +286,8 @@ class Oracle:
             delta_mem += sys.getsizeof(self.delta[k])
         
         return (B_mem, p_mem, delta_mem)
-        
     
+# Parse the graph into an object
 def parse(filename='input.txt'):
     f = open(filename, 'r')
     text = f.read().strip().split('\n')
@@ -292,6 +306,7 @@ def parse(filename='input.txt'):
     
     return G
 
+# Function needed when sampling by centrality
 def get_or_create_avg_dists(graph):
     if os.path.isfile('avg_dists_road.pickle'):
         return pickle.load(open('avg_dists_road.pickle', 'rb'))
@@ -306,6 +321,7 @@ def get_or_create_avg_dists(graph):
         pickle.dump(avg_dists, open('avg_dists_road.pickle', 'wb'))
         return avg_dists
 
+# Dijkstra
 def get_min_dist(graph, node):
     dists = dict()
     
@@ -337,73 +353,6 @@ def get_min_dist(graph, node):
         
     return dists
 
-def plot_mem_time_use(mem_uses, time_uses):
-
-    colors = [
-        (0.77, 0, 0.05),
-        (0.12, 0.24, 1),
-        (0.31, 1, 0.34),
-        (1, 0.35, 0.14)
-        ]
-    
-    #max_len = max([len(m) for m in time_uses])
-    
-    #for i in range(len(time_uses)):
-        #mem_uses[i] = mem_uses[i] + ([None] * (max_len-len(mem_uses[i])))
-    #    time_uses[i] = time_uses[i] + ([None] * (max_len-len(time_uses[i])))
-    
-# =============================================================================
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,500), [None if m == None else m for m in mem_use], c=colors[i])
-#     plt.ylim(0, 2000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of the oracle")
-#     plt.show()
-#     
-# =============================================================================
-# =============================================================================
-#     for i, time_use in enumerate(time_uses):
-#         plt.plot(range(3,76), time_use, c=colors[i])    
-#     plt.xlabel("k")
-#     plt.ylabel("Seconds")
-#     plt.title("Time usage of 50000 queries")
-#     plt.show()
-# =============================================================================
-    
-    for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(3,76), [None if m == None else sum(m) for m in mem_use], c=colors[i])
-    #plt.ylim(0, 1000000000)
-    plt.xlabel("k")
-    plt.ylabel("bytes")
-    plt.title("Memory usage of the oracle")
-    plt.show()
-    
-    for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(3,76), [None if m == None else m[0] for m in mem_use], c=colors[i])
-    #plt.ylim(0, 1000000000)
-    plt.xlabel("k")
-    plt.ylabel("bytes")
-    plt.title("Memory usage of B")
-    plt.show()
-    
-    for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(3,76), [None if m == None else m[1] for m in mem_use], c=colors[i])
-    #plt.ylim(0, 1000000000)
-    plt.xlabel("k")
-    plt.ylabel("bytes")
-    plt.title("Memory usage of p")
-    plt.show()
-    
-    for i, mem_use in enumerate(mem_uses):
-        plt.plot(range(3,76), [None if m == None else m[2] for m in mem_use], c=colors[i])
-    #plt.ylim(0, 1000000000)
-    plt.xlabel("k")
-    plt.ylabel("bytes")
-    plt.title("Memory usage of delta")
-    plt.show()
-
-
 G = parse("input_roads.txt")
 sample_pair_dists = dict()
 appx_factors = []
@@ -424,31 +373,31 @@ for k in range(2, 76):
     preprocessing_time_uses.append(O.preprocessingTime)    
     mem_uses.append(O.get_memory_usage())
 
-# =============================================================================
-#     samples = []
-#     approx_factors_k = []
-#     
-#     nodes = G.get_nodes()
-# 
-#     for _ in range(1000):
-#         
-#         u, v = sample(nodes, 2)
-#         
-#         samples.append((u,v))
-#         sample_pair_dists[(u,v)] = get_min_dist(G, u)[v]
-# 
-#     start = time.time()
-# 
-#     for u, v in samples:
-# 
-#         approx = O.query(u, v)
-#         approx_factors_k.append(approx/sample_pair_dists[(u,v)])
-#     
-#     O.queryTime = time.time() - start
-#     appx_factors.append(approx_factors_k)    
-#     query_time_uses.append(O.queryTime)
-#     print(O.queryTime)
-# =============================================================================
+    samples = []
+    approx_factors_k = []
+    
+    nodes = G.get_nodes()
+
+    for _ in range(50000):
+        
+        u, v = sample(nodes, 2)
+        
+        #samples.append((u,v))
+        #sample_pair_dists[(u,v)] = get_min_dist(G, u)[v]
+
+    start = time.time()
+
+    i = 0
+    for u, v in samples:
+        
+        i += 1
+        #approx = O.query(u, v)
+        #approx_factors_k.append(approx/sample_pair_dists[(u,v)])
+    
+    O.queryTime = time.time() - start
+    appx_factors.append(approx_factors_k)    
+    query_time_uses.append(O.queryTime)
+    print(O.queryTime)
     del O
     
 with open('Final_data/Sampling_strat/centers_m', 'wb') as file:

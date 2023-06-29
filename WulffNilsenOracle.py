@@ -14,6 +14,7 @@ from sys import getsizeof, stderr
 from itertools import chain
 from collections import deque
 
+# Class representing a node in an undirected graph
 class Node:
     
     def __init__(self, node_id):
@@ -34,7 +35,8 @@ class Node:
         
     def add_edge(self, neighbor, weight):
         self.edges[neighbor] = weight
-        
+
+# Class representing a weighted undirected graph
 class Graph:
     
     def __init__(self):
@@ -61,16 +63,20 @@ class Graph:
         
     def get_nodes(self):
         return [k for k in self.nodes]
-
+    
+# Class representing a node in a tree. Used for computing values
+# used when preprocessing D
 class TreeNode:
     
     def __init__(self, sequence):
         self.sequence = sequence
         self.j = None
         self.max_delta = float('-inf')    
-
+        
+# Implementation of the Thorup-Zwick Oracle
 class Oracle:
     
+    # Init the various objects that we need to store
     def __init__(self, k):
         self.k = k
         self.B = None
@@ -81,6 +87,7 @@ class Oracle:
         self.queryTime = 0.0
         self.preprocessingTime = 0.0
         
+    # Inialise bunches, witnesses and delta dictionary
     def init_simple_oracle(self, G, k):
         
         start = time.time()
@@ -132,7 +139,7 @@ class Oracle:
         self.delta = dict(self.delta)
         self.preprocessingTime += time.time() - start
             
-            
+    # Function for initialising witnesses for a sampling layer
     def get_p(self, G, A_i):
         
         queue = []
@@ -167,7 +174,7 @@ class Oracle:
                     
         return (delta_Ai_i, p_i)
     
-    
+    # Function for initialising clusters for i-centers
     def get_clusters(self, G, A, C, delta, delta_Ai, i):
         
         queue = []
@@ -198,6 +205,9 @@ class Oracle:
         
         return (delta, C)
     
+    # Function for initialising D
+    # (Otherwise known as the indices maximising the difference between
+    # diameters in witnesses)
     def init_d(self):
         
         start = time.time()
@@ -234,7 +244,8 @@ class Oracle:
             
         self.preprocessingTime += time.time() - start
           
-        
+    
+    # Naive way of obtaining D
     def init_d_dump(self):
         
         start = time.time()
@@ -271,6 +282,7 @@ class Oracle:
             
         self.preprocessingTime += time.time() - start
     
+    # Another Naive way of obtaining D
     def init_d_naive(self):
         start = time.time()
         
@@ -313,7 +325,7 @@ class Oracle:
                         
         self.preprocessingTime += time.time() - start
 
-    
+    # Get j, given a tree and a range
     def get_j(self, T, i1, i2):
 
         S = self.get_s(T, i1, i2)
@@ -332,6 +344,7 @@ class Oracle:
                 
         return j
     
+    # Build Tree of ranges
     def build_T(self, I):
         
         T = [-1]
@@ -355,6 +368,7 @@ class Oracle:
         
         return T
     
+    # Search tree of ranges given a range
     def get_s(self, T, i1, i2):
     
         S = set()
@@ -398,9 +412,11 @@ class Oracle:
             
         return S
     
+    # Get three depth given an index of an aray in heap structure
     def get_depth(self, idx):    
         return math.floor(math.log2(idx))
     
+    # Enrich the tree of ranges with minimums
     def enrich_T(self, T, u):
     
         for i in range(len(T)-1, 0, -1):
@@ -426,7 +442,7 @@ class Oracle:
                 
         return T
        
-     
+    # The query algorithm
     def query(self, u, v, i1, i2):
         if i2 - i1 <= math.log2(k):
             return self.dist_k(u, v, i1)
@@ -444,6 +460,7 @@ class Oracle:
         else:
             return self.query(u, v, i1, j)
      
+    # Modified Thorup-Zwick distance algorithm
     def dist_k(self, u, v, i = 0):
         w = self.p[i][u]
                         
@@ -455,6 +472,7 @@ class Oracle:
             
         return self.delta[(w,u)] + self.delta[(w, v)] 
     
+    # Get total memory use
     def get_memory_usage(self):
         
         B_mem = sys.getsizeof(self.B)
@@ -495,7 +513,7 @@ class Oracle:
         
         return (B_mem, p_mem, delta_mem, D_mem)
         
-    
+# Parse the graph into an object    
 def parse(filename='input.txt'):
     f = open(filename, 'r')
     text = f.read().strip().split('\n')
@@ -514,6 +532,7 @@ def parse(filename='input.txt'):
     
     return G
 
+# Dijkstra
 def get_min_dist(graph, node):
     dists = dict()
     
@@ -545,82 +564,6 @@ def get_min_dist(graph, node):
         
     return dists
 
-def plot_mem_time_use(mem_uses, time_uses):
-
-    colors = [
-        (0.77, 0, 0.05),
-        (0.12, 0.24, 1),
-        (0.31, 1, 0.34),
-        (1, 0.35, 0.14)
-        ]
-    
-    #max_len = max([len(m) for m in time_uses])
-    
-    #for i in range(len(time_uses)):
-        #mem_uses[i] = mem_uses[i] + ([None] * (max_len-len(mem_uses[i])))
-    #    time_uses[i] = time_uses[i] + ([None] * (max_len-len(time_uses[i])))
-    
-# =============================================================================
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(16,500), [None if m == None else m for m in mem_use], c=colors[i])
-#     plt.ylim(0, 2000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of the oracle")
-#     plt.show()
-#     
-# =============================================================================
-    for i, time_use in enumerate(time_uses):
-        plt.plot(range(5,76), time_use, c=colors[i])    
-    plt.xlabel("k")
-    plt.ylabel("Seconds")
-    plt.title("Time usage of the preprocessing algorithm")
-    plt.show()
-# =============================================================================
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(5,76), [None if m == None else sum(m) for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of the oracle")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(5,76), [None if m == None else m[0] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of B")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(5,76), [None if m == None else m[1] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of p")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(5,76), [None if m == None else m[2] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of delta")
-#     plt.show()
-#     
-#     for i, mem_use in enumerate(mem_uses):
-#         plt.plot(range(5,76), [None if m == None else m[3] for m in mem_use], c=colors[i])
-#     #plt.ylim(0, 1000000000)
-#     plt.xlabel("k")
-#     plt.ylabel("bytes")
-#     plt.title("Memory usage of D")
-#     plt.show()
-# =============================================================================
-    
-
-
 G = parse("input_roads.txt")
 sample_pair_dists = dict()
 appx_factors = []
@@ -642,32 +585,30 @@ for k in range(5, 201):
 
     preprocessing_time_uses.append(O.preprocessingTime)    
     mem_uses.append(O.get_memory_usage())
-# =============================================================================
-# 
-#     samples = []
-#     approx_factors_k = []
-#     
-#     nodes = G.get_nodes()
-# 
-#     for _ in range(1000):
-#         
-#         u, v = sample(nodes, 2)
-#         
-#         samples.append((u,v))
-#         sample_pair_dists[(u,v)] = get_min_dist(G, u)[v]
-# 
-#     start = time.time()
-# 
-#     for u, v in samples:
-# 
-#         approx = O.query(u, v, 0, k-1)
-#         approx_factors_k.append(approx/sample_pair_dists[(u,v)])
-#     
-#     O.queryTime = time.time() - start
-#     appx_factors.append(approx_factors_k)    
-#     query_time_uses.append(O.queryTime)
-#     print(O.queryTime)
-# =============================================================================
+
+    samples = []
+    approx_factors_k = []
+    
+    nodes = G.get_nodes()
+
+    for _ in range(1000):
+        
+        u, v = sample(nodes, 2)
+        
+        samples.append((u,v))
+        sample_pair_dists[(u,v)] = get_min_dist(G, u)[v]
+
+    start = time.time()
+
+    for u, v in samples:
+
+        approx = O.query(u, v, 0, k-1)
+        approx_factors_k.append(approx/sample_pair_dists[(u,v)])
+    
+    O.queryTime = time.time() - start
+    appx_factors.append(approx_factors_k)    
+    query_time_uses.append(O.queryTime)
+    print(O.queryTime)
     del O
     
 with open('Final_data/D_construct/naive_m_long', 'wb') as file:
